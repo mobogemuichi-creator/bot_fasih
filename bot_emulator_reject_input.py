@@ -1749,8 +1749,32 @@ def isi_blok_iii(alamat_val=""):
 
 
 def ketuk_tombol_increment():
-    """Mencari dan mengetuk tombol 'Increment' di BLOK III."""
-    print("\n[BLOK III] [STEP 7] Mengetuk tombol kontrol 'Increment'...")
+    """Mencari dan mengetuk tombol 'Increment' di BLOK III jika jumlah keluarga belum terisi."""
+    print("\n[BLOK III] [STEP 7] Memeriksa textbox '302. Jumlah keluarga'...")
+    
+    # Cek label 302 / Berapa jumlah keluarga
+    label_302 = d(textContains="Berapa jumlah keluarga")
+    if not label_302.exists():
+        label_302 = d(textContains="302")
+
+    input_302 = None
+    if label_302.exists():
+        input_302 = label_302.down(className="android.widget.EditText")
+
+    if not input_302 or not input_302.exists():
+        # Fallback cari EditText yang berdampingan dengan tombol Increment/Decrement
+        inc_ref = d(text="Increment")
+        if inc_ref.exists():
+            input_302 = inc_ref.left(className="android.widget.EditText")
+
+    if input_302 and input_302.exists():
+        val_302 = (input_302.get_text() or "").strip()
+        print(f"[BLOK III] Status textbox 302 (jumlah keluarga): '{val_302}'")
+        if val_302 == "1" or (val_302 != "" and val_302 != "0"):
+            print(f"[BLOK III] [SKIP] Textbox 302 (jumlah keluarga) sudah berisi '{val_302}'. Melewati pengetukan tombol 'Increment'.")
+            return True
+
+    print("[BLOK III] [STEP 7] Mengetuk tombol kontrol 'Increment'...")
     increment_btn = d(text="Increment")
     if not increment_btn.exists():
         increment_btn = d(textContains="Increment")
