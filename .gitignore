@@ -14,3 +14,8 @@ temp_*.txt
 # Large data Excel & XML Dumps (opsional: hapus dari gitignore jika ingin disinkronkan)
 dump*.xml
 *.xlsx
+
+# Local helper scripts & config (tidak ikut ke GitHub)
+push_to_github.*
+scan_page.py
+.agents/
