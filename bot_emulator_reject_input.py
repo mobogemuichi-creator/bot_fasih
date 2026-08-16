@@ -1217,7 +1217,7 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         
         print(f"[BLOK I] Performing dynamic swipe {swipe_idx} (540, 800 -> 540, 155)...")
         try:
-            swipe_aman(540, 800, 540, 400, duration=0.1)
+            swipe_aman(540, 600, 540, 400, duration=0.1)
             time.sleep(0.1)
         except Exception as scroll_err:
             print(f"[WARNING] Gagal swipe ke bawah pada percobaan {swipe_idx}: {scroll_err}")
@@ -1244,7 +1244,7 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
                 print(f"[BLOK I] Label 'a. Provinsi' ditemukan di layar (pemeriksaan ke-{swipe_up_idx}).")
                 break
             try:
-                swipe_aman(540, 400, 540, 800, duration=0.1)
+                swipe_aman(540, 400, 540, 600, duration=0.1)
                 time.sleep(0.1)
             except Exception as scroll_up_err:
                 print(f"[WARNING] Gagal swipe ke atas pada percobaan {swipe_up_idx}: {scroll_up_err}")
