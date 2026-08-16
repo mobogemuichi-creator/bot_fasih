@@ -15,6 +15,11 @@ echo ========================================================
 echo            MENJALANKAN BOT EMULATOR METER
 echo ========================================================
 echo.
+echo [1/2] Memeriksa & mengunduh pembaruan dari GitHub...
+git pull origin main
+echo.
+echo [2/2] Memulai bot emulator meter...
+echo.
 
 python bot_emulator_meter2.py
 
