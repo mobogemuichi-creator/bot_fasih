@@ -26,8 +26,8 @@ EXCEL_FILE_2 = "data_tugas2.xlsx"      # Instance 2: bot_emulator_idpel2, bot_em
 EXCEL_FILE_REJECT = "data_reject.xlsx" # Reject Input: bot_emulator_reject_input
 
 # Path Folder Foto (Lokal PC)
-# FOTO_DIRECTORY = r"C:\Users\batan\OneDrive\Documents\XuanZhi9\Pictures"
-FOTO_DIRECTORY = r"C:\Users\BaliAga\Documents\XuanZhi9\Pictures"
+FOTO_DIRECTORY = r"C:\Users\batan\OneDrive\Documents\XuanZhi9\Pictures"
+# FOTO_DIRECTORY = r"C:\Users\BaliAga\Documents\XuanZhi9\Pictures"
 FOTO_DIR = FOTO_DIRECTORY  # Alias untuk ss_gmaps / ss_gmaps2
 
 # File Log Gambar Hitam (ss_gmaps)
