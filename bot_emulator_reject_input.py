@@ -2057,8 +2057,8 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
-            loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.1)
-            time.sleep(SLEEP_SHORT)
+            loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.5)
+            time.sleep(SLEEP_LONG)
 
             # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
             if cek_radio_button_tercentang("1. Berhasil didata", exact=False):
