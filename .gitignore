@@ -22,6 +22,8 @@
 !ss_gmaps.py
 !ss_gmaps2.py
 !konfigurasi.py
+!cek_idpel_1.py
+!cek_nometer_1.py
 
 # Whitelist gitignore
 !.gitignore

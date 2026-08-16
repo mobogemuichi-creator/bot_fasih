@@ -830,7 +830,46 @@ def ketuk(target_text, exact=False, sleep_after=SLEEP_SHORT):
     return success
 
 
-def pilih_blok(nama_blok):
+def check_dan_tutup_pengaturan():
+    """
+    Memeriksa apakah halaman/dialog 'Pengaturan' muncul secara tidak sengaja (Referensi dump.xml).
+    Jika muncul, mengetuk tombol 'Batal' (via selector atau koordinat bounds [564,1629][729,1725] -> (646, 1677)) untuk menutupnya.
+    """
+    try:
+        is_pengaturan = (
+            check_exists(d(text="Pengaturan")) or
+            check_exists(d(textContains="Pengaturan")) or
+            check_exists(d(descriptionContains="Pengaturan")) or
+            check_exists(d.xpath("//*[contains(@text, 'Pengaturan') or contains(@content-desc, 'Pengaturan')]"))
+        )
+        if is_pengaturan:
+            print("[PENGATURAN] Terdeteksi dialog/halaman 'Pengaturan'! Mengetuk 'Batal'...")
+            clicked = False
+            try:
+                btn_batal = d(text="Batal")
+                if not check_exists(btn_batal):
+                    btn_batal = d(textContains="Batal")
+                if check_exists(btn_batal):
+                    btn_batal.click()
+                    clicked = True
+                elif check_exists(d.xpath("//*[contains(@text, 'Batal') or contains(@content-desc, 'Batal')]")):
+                    d.xpath("//*[contains(@text, 'Batal') or contains(@content-desc, 'Batal')]").click()
+                    clicked = True
+            except Exception:
+                pass
+
+            if not clicked:
+                print("[PENGATURAN] Mengetuk 'Batal' via koordinat statis bounds [564,1629][729,1725] -> (646, 1677)...")
+                d.click(646, 1677)
+
+            time.sleep(SLEEP_SHORT)
+            return True
+    except Exception as e:
+        print(f"[WARNING] Error pengecekan Pengaturan: {e}")
+    return False
+
+
+def pilih_blok(nama_blok, max_attempts=3):
     """
     Fungsi universal untuk beralih ke BLOK I, BLOK II, BLOK III, atau BLOK IV di Fasih:
     - Referensi koordinat fallback dari dump.xml:
@@ -838,6 +877,8 @@ def pilih_blok(nama_blok):
       * BLOK II  : (350, 681)  [bounds: -840,570][-27,792]
       * BLOK III : (350, 912)  [bounds: -840,801][-27,1023]
       * BLOK IV  : (350, 1119) [bounds: -840,1032][-27,1206]
+    - Jika malah mengetuk 'Pengaturan' dan muncul dialog 'Pengaturan',
+      akan mengetuk tombol 'Batal' dan mengulangi pengetukan blok hingga max_attempts kali.
     """
     if not nama_blok:
         print("[BLOK] Parameter nama_blok kosong.")
@@ -856,8 +897,6 @@ def pilih_blok(nama_blok):
     elif not target.startswith("BLOK"):
         target = f"BLOK {target}"
 
-    print(f"[BLOK] Mencari dan beralih ke '{target}'...")
-
     # Mapping koordinat presisi sidebar menu dari dump.xml
     coords_map = {
         "BLOK I": (350, 450),
@@ -866,50 +905,66 @@ def pilih_blok(nama_blok):
         "BLOK IV": (350, 1119)
     }
 
-    # 1. Coba klik via uiautomator2 text / description / textContains
-    try:
-        if check_exists(d(text=target)):
-            d(text=target).click()
-            print(f"[BLOK] Berhasil mengetuk '{target}' via text")
-            time.sleep(SLEEP_MEDIUM)
-            return True
-        elif check_exists(d(textContains=target)):
-            d(textContains=target).click()
-            print(f"[BLOK] Berhasil mengetuk '{target}' via textContains")
-            time.sleep(SLEEP_MEDIUM)
-            return True
-        elif check_exists(d(descriptionContains=target)):
-            d(descriptionContains=target).click()
-            print(f"[BLOK] Berhasil mengetuk '{target}' via descriptionContains")
-            time.sleep(SLEEP_MEDIUM)
-            return True
-    except Exception:
-        pass
+    for attempt in range(1, max_attempts + 1):
+        print(f"[BLOK] Mencari dan beralih ke '{target}' (Percobaan {attempt}/{max_attempts})...")
 
-    # 2. Coba klik via XPath
-    try:
-        xp = f"//*[contains(@text, '{target}') or contains(@content-desc, '{target}')]"
-        if check_exists(d.xpath(xp)):
-            d.xpath(xp).click()
-            print(f"[BLOK] Berhasil mengetuk '{target}' via XPath")
-            time.sleep(SLEEP_MEDIUM)
-            return True
-    except Exception:
-        pass
+        # Cek jika dialog Pengaturan sedang terbuka sebelum mengetuk
+        if check_dan_tutup_pengaturan():
+            time.sleep(0.5)
 
-    # 3. Fallback koordinat presisi sidebar menu dari dump.xml
-    if target in coords_map:
-        cx, cy = coords_map[target]
-        print(f"[BLOK] Mengetuk '{target}' via koordinat fallback sidebar ({cx}, {cy})...")
+        clicked = False
+
+        # 1. Coba klik via uiautomator2 text / description / textContains
         try:
-            d.click(cx, cy)
-            print(f"[BLOK] Berhasil mengetuk koordinat '{target}' ({cx}, {cy})")
-            time.sleep(SLEEP_MEDIUM)
-            return True
-        except Exception as err:
-            print(f"[ERROR] Gagal mengetuk '{target}' via koordinat: {err}")
+            if check_exists(d(text=target)):
+                d(text=target).click()
+                print(f"[BLOK] Berhasil mengetuk '{target}' via text")
+                clicked = True
+            elif check_exists(d(textContains=target)):
+                d(textContains=target).click()
+                print(f"[BLOK] Berhasil mengetuk '{target}' via textContains")
+                clicked = True
+            elif check_exists(d(descriptionContains=target)):
+                d(descriptionContains=target).click()
+                print(f"[BLOK] Berhasil mengetuk '{target}' via descriptionContains")
+                clicked = True
+        except Exception:
+            pass
 
-    print(f"[WARNING] Gagal beralih ke '{target}'.")
+        # 2. Coba klik via XPath
+        if not clicked:
+            try:
+                xp = f"//*[contains(@text, '{target}') or contains(@content-desc, '{target}')]"
+                if check_exists(d.xpath(xp)):
+                    d.xpath(xp).click()
+                    print(f"[BLOK] Berhasil mengetuk '{target}' via XPath")
+                    clicked = True
+            except Exception:
+                pass
+
+        # 3. Fallback koordinat presisi sidebar menu dari dump.xml
+        if not clicked and target in coords_map:
+            cx, cy = coords_map[target]
+            print(f"[BLOK] Mengetuk '{target}' via koordinat fallback sidebar ({cx}, {cy})...")
+            try:
+                d.click(cx, cy)
+                print(f"[BLOK] Berhasil mengetuk koordinat '{target}' ({cx}, {cy})")
+                clicked = True
+            except Exception as err:
+                print(f"[ERROR] Gagal mengetuk '{target}' via koordinat: {err}")
+
+        time.sleep(SLEEP_MEDIUM)
+
+        # 4. Pengecekan setelah ketuk: Apakah muncul halaman/dialog 'Pengaturan'?
+        if check_dan_tutup_pengaturan():
+            print(f"[BLOK] [RETRY] Pengetukan '{target}' terlempar ke halaman 'Pengaturan'. Mengulangi pengetukan {target}...")
+            time.sleep(0.5)
+            continue
+        else:
+            if clicked:
+                return True
+
+    print(f"[WARNING] Gagal beralih ke '{target}' setelah {max_attempts}x percobaan.")
     return False
 
 
