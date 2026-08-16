@@ -1591,6 +1591,11 @@ def isi_blok_iii(alamat_val=""):
         time.sleep(0.5)
 
     if input_a and input_a.exists():
+        val_existing = (input_a.get_text() or "").strip()
+        if val_existing:
+            print(f"[BLOK III] [SKIP] EditText 'a. Provinsi' sudah terisi: '{val_existing}'. Melewati pengisian BLOK III.")
+            return
+
         provinsi_clean = ekstrak_nama_saja(provinsi)
         input_a.set_text(str(provinsi_clean))
         print(f"[BLOK III] Berhasil mengisi Provinsi: '{provinsi_clean}'")
@@ -1898,10 +1903,10 @@ def proses_update_reject_nik():
             # loop_swipe_statis(delta_y=800, loop=1)
             # time.sleep(SLEEP_SHORT)
 
-            print("[BLOK CHECK] Memilih BLOK I...")
-            ketuk_sidebar_toggle()
-            time.sleep(SLEEP_SHORT)
-            pilih_blok("I")
+            # print("[BLOK CHECK] Memilih BLOK I...")
+            # ketuk_sidebar_toggle()
+            # time.sleep(SLEEP_SHORT)
+            # pilih_blok("I")
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
