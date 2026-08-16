@@ -10,6 +10,7 @@
 !3_run_bot_emulator_meter2.bat
 !4_run_bot_emulator_reject_list.bat
 !5_run_bot_emulator_reject_input.bat
+!auto_update.bat
 
 # Whitelist allowed .py scripts
 !bot_emulator_idpel.py

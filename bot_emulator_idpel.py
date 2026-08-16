@@ -153,6 +153,19 @@ def swipe_ke_atas_cepat(times=3):
 def press_back_and_check_periode():
     """Menekan BACK dan langsung memeriksa apakah kebablasan ke halaman Periode untuk memicu Submit"""
     try:
+        # Ketuk tombol OK statis (bounds 528, 1691) jika ada modal OK yang menghalangi sebelum BACK
+        try:
+            btn_close = d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")
+            if btn_close.exists:
+                btn_close.click()
+            elif d(text="OK").exists:
+                d(text="OK").click()
+            else:
+                d.click(528, 1691)
+        except Exception:
+            d.click(528, 1691)
+        time.sleep(0.5)
+
         d.press("back")
         time.sleep(SLEEP_SHORT)
         

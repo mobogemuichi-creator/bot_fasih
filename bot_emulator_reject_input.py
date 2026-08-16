@@ -369,6 +369,20 @@ def kembali_ke_daftar_assignment(max_retry=5):
             print("[RECOVERY] Sudah berada di halaman 'Daftar Assignment'.")
             return True
 
+        # Ketuk tombol OK statis (bounds 528, 1691) jika ada modal OK yang menghalangi sebelum BACK
+        print(f"[RECOVERY] Mengetuk tombol OK statis (bounds 528, 1691) sebelum BACK...")
+        try:
+            btn_close = d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")
+            if btn_close.exists:
+                btn_close.click()
+            elif d(text="OK").exists:
+                d(text="OK").click()
+            else:
+                d.click(528, 1691)
+        except Exception:
+            d.click(528, 1691)
+        time.sleep(0.5)
+
         print(f"[RECOVERY] Menekan tombol BACK (Percobaan {i}/{max_retry})...")
         try:
             d.press("back")
@@ -1217,8 +1231,8 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         
         print(f"[BLOK I] Performing dynamic swipe {swipe_idx} (540, 800 -> 540, 155)...")
         try:
-            swipe_aman(540, 600, 540, 400, duration=0.1)
-            time.sleep(0.1)
+            swipe_aman(540, 700, 540, 400, duration=0.1)
+            time.sleep(0.2)
         except Exception as scroll_err:
             print(f"[WARNING] Gagal swipe ke bawah pada percobaan {swipe_idx}: {scroll_err}")
             break
@@ -1245,7 +1259,7 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
                 break
             try:
                 swipe_aman(540, 400, 540, 600, duration=0.1)
-                time.sleep(0.1)
+                time.sleep(0.2)
             except Exception as scroll_up_err:
                 print(f"[WARNING] Gagal swipe ke atas pada percobaan {swipe_up_idx}: {scroll_up_err}")
                 break
