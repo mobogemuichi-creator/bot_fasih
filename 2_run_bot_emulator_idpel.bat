@@ -19,8 +19,16 @@ echo.
 where git >nul 2>&1
 if %errorLevel% neq 0 (
     echo [PERINGATAN] Git belum ter-install di komputer ini.
-    echo Harap install Git dari https://git-scm.com/ agar bisa auto-update.
+    echo [INFO] Mengunduh & meng-install Git secara otomatis via Windows Winget...
     echo.
+    winget install --id Git.Git -e --source winget --accept-source-agreements --accept-package-agreements
+    echo.
+    echo ========================================================
+    echo Git telah berhasil di-install!
+    echo Silakan TUTUP jendela ini dan JALANKAN ULANG file .bat ini.
+    echo ========================================================
+    pause
+    exit /b
 ) else (
     if not exist ".git" (
         echo [1/2] Pertama kali dijalankan! Mengunduh seluruh project dari GitHub...
