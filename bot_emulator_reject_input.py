@@ -1807,6 +1807,69 @@ def ketuk_tombol_increment():
         raise Exception("Tombol 'Increment' tidak ditemukan.")
 
 
+def ketuk_ok_submit_diproses(max_attempts=5):
+    """
+    Memeriksa dan mengetuk tombol 'OK' pada modal 'Submit diproses'.
+    Jika setelah diketuk modal masih tetap muncul ('Submit diproses' masih ada di layar),
+    akan mengulang pengetukan hingga `max_attempts` kali (default 5).
+    Jika setelah 5x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
+    """
+    print("\n[SUBMIT DIPROSES] Memeriksa modal 'Submit diproses'...")
+    
+    # Koordinat tengah tombol OK dari bounds [137,1639][919,1744] (id: btn_submit_progress_close)
+    ok_bounds_x, ok_bounds_y = 528, 1691
+    
+    for attempt in range(1, max_attempts + 1):
+        is_submit_modal = (
+            check_exists(d(textContains="Submit diproses")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
+            check_exists(d(text="OK"))
+        )
+        
+        if not is_submit_modal:
+            print("[SUBMIT DIPROSES] Modal 'Submit diproses' tidak terdeteksi (sudah tertutup).")
+            return True
+
+        print(f"[SUBMIT DIPROSES] Terdeteksi modal 'Submit diproses'. Percobaan ketuk 'OK' ke-{attempt}/{max_attempts}...")
+        
+        clicked = False
+        try:
+            btn_close = d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")
+            if btn_close.exists():
+                btn_close.click()
+                clicked = True
+            elif d(text="OK").exists():
+                d(text="OK").click()
+                clicked = True
+            else:
+                clicked = ketuk("OK", sleep_after=SLEEP_SHORT)
+        except Exception as e:
+            print(f"[WARNING] Klik tombol OK via elemen gagal: {e}")
+
+        if not clicked:
+            print(f"[SUBMIT DIPROSES] Klik via elemen gagal. Mengetuk koordinat statis bounds ({ok_bounds_x}, {ok_bounds_y})...")
+            d.click(ok_bounds_x, ok_bounds_y)
+
+        time.sleep(2)
+
+        still_exists = (
+            check_exists(d(textContains="Submit diproses")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title"))
+        )
+        if not still_exists:
+            print(f"[SUBMIT DIPROSES] [SUKSES] Modal 'Submit diproses' berhasil ditutup pada percobaan ke-{attempt}.")
+            return True
+        else:
+            print(f"[SUBMIT DIPROSES] [RETRY] Modal 'Submit diproses' masih ada di layar setelah percobaan ke-{attempt}.")
+
+    # Fallback jika 5x percobaan elemen tidak berhasil menutup modal
+    print(f"[SUBMIT DIPROSES] [FALLBACK STATIS] Sudah {max_attempts}x percobaan dan modal masih ada. Mengetuk koordinat statis bounds OK ({ok_bounds_x}, {ok_bounds_y})...")
+    d.click(ok_bounds_x, ok_bounds_y)
+    time.sleep(2)
+    return True
+
+
 
 def proses_update_reject_nik():
     """Fungsi utama memproses list data reject untuk update NIK"""
@@ -2018,10 +2081,7 @@ def proses_update_reject_nik():
                     loop_swipe_statis(delta_y=-200, loop=1)
                     time.sleep(SLEEP_SHORT)
             
-            # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
-            if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
-                print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
-                return
+            
 
             #13.B BLOK II
             ketuk_sidebar_toggle()
@@ -2169,9 +2229,13 @@ def proses_update_reject_nik():
             ketuk("YA", sleep_after=SLEEP_LONG)
             time.sleep(SLEEP_LONG)
 
-            #25 ketuk "OK"
-            ketuk("OK", sleep_after=SLEEP_LONG)
-            time.sleep(SLEEP_LONG)
+            # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
+            if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
+                print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
+                return
+
+            #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
+            ketuk_ok_submit_diproses(max_attempts=5)
 
             #25 menekan tombol "BACK" pada emulator
             print("[EMULATOR] Menekan tombol Back pada emulator...")
@@ -2195,6 +2259,11 @@ def proses_update_reject_nik():
                 simpan_status_excel(row, "SUKSES DIUPDATE")
                 sukses_baris = True
                 break
+
+            # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
+            if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
+                print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
+                return
 
 def main():
     try:
