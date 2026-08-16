@@ -1,21 +1,26 @@
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
+# Ignore all files by default
+*
 
-# Temporary & Log files
-*.tmp
-*.log
-temp_*.txt
+# Whitelist allowed .bat runners
+!1_run_screenshot_google_maps.bat
+!1_run_screenshot_google_maps2.bat
+!2_run_bot_emulator_idpel.bat
+!2_run_bot_emulator_idpel2.bat
+!3_run_bot_emulator_meter.bat
+!3_run_bot_emulator_meter2.bat
+!4_run_bot_emulator_reject_list.bat
+!5_run_bot_emulator_reject_input.bat
 
-# Archive files
-*.zip
+# Whitelist allowed .py scripts
+!bot_emulator_idpel.py
+!bot_emulator_idpel2.py
+!bot_emulator_meter.py
+!bot_emulator_meter2.py
+!bot_emulator_reject_input.py
+!bot_emulator_reject_list.py
+!ss_gmaps.py
+!ss_gmaps2.py
+!konfigurasi.py
 
-# Large data Excel & XML Dumps (opsional: hapus dari gitignore jika ingin disinkronkan)
-dump*.xml
-*.xlsx
-
-# Local helper scripts & config (tidak ikut ke GitHub)
-push_to_github.*
-scan_page.py
-.agents/
+# Whitelist gitignore
+!.gitignore

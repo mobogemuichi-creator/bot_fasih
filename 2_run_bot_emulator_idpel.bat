@@ -38,9 +38,15 @@ if %errorLevel% neq 0 (
         git reset --hard origin/main
         git branch -M main
         git branch --set-upstream-to=origin/main main
+        if exist "konfigurasi.py" (
+            git update-index --skip-worktree konfigurasi.py >nul 2>&1
+        )
         echo.
     ) else (
         echo [1/2] Memeriksa & mengunduh pembaruan dari GitHub...
+        if exist "konfigurasi.py" (
+            git update-index --skip-worktree konfigurasi.py >nul 2>&1
+        )
         git pull origin main
         echo.
     )
