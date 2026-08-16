@@ -992,8 +992,12 @@ def pilih_radio_button(option_text, exact=False, sleep_after=SLEEP_SHORT):
 def cek_radio_button_tercentang(option_text, exact=False):
     """
     Memeriksa apakah RadioButton dengan teks tertentu sedang berstatus tercentang/terpilih.
-    Menggunakan dump_hierarchy() + parsing XML langsung karena d.xpath().exists tidak reliabel
-    untuk app Flutter yang tidak menggunakan atribut checked secara standar.
+    
+    Pada app WebView/Flutter (Fasih), atribut checked/selected/focused selalu false.
+    Deteksi dilakukan dengan memeriksa apakah elemen RadioButton visual (NAF="true", index=1)
+    yang bersaudara dengan label teks target memiliki child element (android.widget.TextView)
+    di dalamnya. Jika ada child = tercentang (filled circle), jika tidak ada = belum tercentang.
+    
     Returns: bool (True jika tercentang, False jika belum)
     """
     if not option_text:
@@ -1006,10 +1010,66 @@ def cek_radio_button_tercentang(option_text, exact=False):
         xml_data = d.dump_hierarchy()
         root = ET.fromstring(xml_data)
         
-        # Cari semua elemen yang memiliki teks target
+        # Strategi 1: Cari parent View yang berisi RadioButton dengan teks target 
+        # dan cek sibling RadioButton NAF=true apakah punya child (= tercentang)
+        for parent in root.iter():
+            children = list(parent)
+            if len(children) < 2:
+                continue
+            
+            # Cek apakah parent ini mengandung RadioButton dengan teks target
+            has_target_radio = False
+            naf_radio = None
+            
+            for child in children:
+                child_class = child.attrib.get('class', '')
+                child_text = (child.attrib.get('text') or '').strip()
+                child_naf = child.attrib.get('NAF', '')
+                
+                # Cek apakah ini RadioButton dengan teks target (index=0 biasanya)
+                if 'RadioButton' in child_class and child_text:
+                    if exact:
+                        if child_text == target:
+                            has_target_radio = True
+                    else:
+                        if target in child_text:
+                            has_target_radio = True
+                
+                # Cek apakah ini RadioButton visual (NAF=true, tanpa teks)
+                if 'RadioButton' in child_class and child_naf == 'true' and not child_text:
+                    naf_radio = child
+            
+            # Jika tidak ditemukan RadioButton berteks, cek juga View dengan teks target
+            if not has_target_radio:
+                for child in children:
+                    child_class = child.attrib.get('class', '')
+                    child_text = (child.attrib.get('text') or '').strip()
+                    if 'View' in child_class and child_text:
+                        if exact and child_text == target:
+                            has_target_radio = True
+                            break
+                        elif not exact and target in child_text:
+                            has_target_radio = True
+                            break
+            
+            if has_target_radio and naf_radio is not None:
+                # Cek apakah RadioButton NAF=true punya child element
+                naf_children = list(naf_radio)
+                has_inner = len(naf_children) > 0
+                
+                if has_inner:
+                    print(f"[RADIO CEK] '{target}' TERDETEKSI terpilih! (RadioButton NAF=true memiliki {len(naf_children)} child element)")
+                    return True
+                else:
+                    print(f"[RADIO CEK] '{target}' TIDAK terpilih (RadioButton NAF=true tidak memiliki child element)")
+                    return False
+        
+        # Strategi 2 (fallback): Cek atribut standar checked/focused/selected 
         for node in root.iter():
             node_text = (node.attrib.get('text') or '').strip()
-            if not node_text:
+            node_class = node.attrib.get('class', '')
+            
+            if 'RadioButton' not in node_class or not node_text:
                 continue
             
             match = False
@@ -1018,51 +1078,14 @@ def cek_radio_button_tercentang(option_text, exact=False):
             else:
                 match = (target in node_text)
             
-            if not match:
-                continue
-            
-            node_class = node.attrib.get('class', '')
-            
-            # Kasus 1: Elemen itu sendiri adalah RadioButton — cek atributnya langsung
-            if 'RadioButton' in node_class:
+            if match:
                 focused = node.attrib.get('focused', 'false') == 'true'
                 checked = node.attrib.get('checked', 'false') == 'true'
                 selected = node.attrib.get('selected', 'false') == 'true'
-                print(f"[RADIO CEK] Node '{node_text}' (RadioButton): focused={focused}, checked={checked}, selected={selected}")
+                print(f"[RADIO CEK] Fallback: Node '{node_text}': focused={focused}, checked={checked}, selected={selected}")
                 if focused or checked or selected:
-                    print(f"[RADIO CEK] '{target}' TERDETEKSI terpilih!")
+                    print(f"[RADIO CEK] '{target}' TERDETEKSI terpilih via fallback!")
                     return True
-        
-        # Kasus 2: Teks target ada di elemen View/TextView — cek saudara RadioButton dalam parent yang sama
-        # Kita perlu traverse tree sambil track parent
-        for parent in root.iter():
-            children = list(parent)
-            if not children:
-                continue
-            
-            # Cek apakah ada child yang punya teks target
-            has_target_text = False
-            for child in parent.iter():
-                child_text = (child.attrib.get('text') or '').strip()
-                if exact and child_text == target:
-                    has_target_text = True
-                    break
-                elif not exact and target in child_text:
-                    has_target_text = True
-                    break
-            
-            if not has_target_text:
-                continue
-            
-            # Cek semua RadioButton di dalam parent yang sama
-            for child in parent.iter():
-                if 'RadioButton' in child.attrib.get('class', ''):
-                    focused = child.attrib.get('focused', 'false') == 'true'
-                    checked = child.attrib.get('checked', 'false') == 'true'
-                    selected = child.attrib.get('selected', 'false') == 'true'
-                    if focused or checked or selected:
-                        print(f"[RADIO CEK] '{target}' TERDETEKSI terpilih via sibling RadioButton (focused={focused}, checked={checked}, selected={selected})")
-                        return True
         
         print(f"[RADIO CEK] '{target}' TIDAK terdeteksi terpilih pada semua pengecekan.")
     except Exception as e:
