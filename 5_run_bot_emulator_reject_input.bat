@@ -30,6 +30,12 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 ) else (
+    set "HAS_KONFIG="
+    if exist "konfigurasi.py" (
+        set "HAS_KONFIG=1"
+        copy /y "konfigurasi.py" "konfigurasi_backup.tmp" >nul 2>&1
+    )
+
     if not exist ".git" (
         echo [1/2] Pertama kali dijalankan! Mengunduh seluruh project dari GitHub...
         git init
@@ -38,18 +44,23 @@ if %errorLevel% neq 0 (
         git reset --hard origin/main
         git branch -M main
         git branch --set-upstream-to=origin/main main
-        if exist "konfigurasi.py" (
-            git update-index --skip-worktree konfigurasi.py >nul 2>&1
-        )
         echo.
     ) else (
         echo [1/2] Memeriksa dan mengunduh pembaruan dari GitHub...
-        if exist "konfigurasi.py" (
-            git update-index --skip-worktree konfigurasi.py >nul 2>&1
-        )
         git fetch origin main
         git reset --hard origin/main
         echo.
+    )
+
+    if defined HAS_KONFIG (
+        if exist "konfigurasi_backup.tmp" (
+            copy /y "konfigurasi_backup.tmp" "konfigurasi.py" >nul 2>&1
+            del /f /q "konfigurasi_backup.tmp" >nul 2>&1
+        )
+    )
+
+    if exist "konfigurasi.py" (
+        git update-index --skip-worktree konfigurasi.py >nul 2>&1
     )
 )
 
