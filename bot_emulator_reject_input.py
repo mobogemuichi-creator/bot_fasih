@@ -1217,7 +1217,7 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         
         print(f"[BLOK I] Performing dynamic swipe {swipe_idx} (540, 800 -> 540, 155)...")
         try:
-            swipe_aman(540, 700, 540, 400, duration=0.1)
+            swipe_aman(540, 800, 540, 400, duration=0.1)
             time.sleep(0.1)
         except Exception as scroll_err:
             print(f"[WARNING] Gagal swipe ke bawah pada percobaan {swipe_idx}: {scroll_err}")
@@ -1244,7 +1244,7 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
                 print(f"[BLOK I] Label 'a. Provinsi' ditemukan di layar (pemeriksaan ke-{swipe_up_idx}).")
                 break
             try:
-                swipe_aman(540, 400, 540, 700, duration=0.1)
+                swipe_aman(540, 400, 540, 800, duration=0.1)
                 time.sleep(0.1)
             except Exception as scroll_up_err:
                 print(f"[WARNING] Gagal swipe ke atas pada percobaan {swipe_up_idx}: {scroll_up_err}")
@@ -1750,37 +1750,14 @@ def isi_blok_iii(alamat_val=""):
 
 def ketuk_tombol_increment():
     """Mencari dan mengetuk tombol 'Increment' di BLOK III jika jumlah keluarga belum terisi."""
-    print("\n[BLOK III] [STEP 7] Memeriksa textbox '302. Jumlah keluarga'...")
+    print("\n[BLOK III] [STEP 7] Memeriksa & mencari tombol 'Increment' di BLOK III...")
     
-    # Cek label 302 / Berapa jumlah keluarga
-    label_302 = d(textContains="Berapa jumlah keluarga")
-    if not label_302.exists():
-        label_302 = d(textContains="302")
-
-    input_302 = None
-    if label_302.exists():
-        input_302 = label_302.down(className="android.widget.EditText")
-
-    if not input_302 or not input_302.exists():
-        # Fallback cari EditText yang berdampingan dengan tombol Increment/Decrement
-        inc_ref = d(text="Increment")
-        if inc_ref.exists():
-            input_302 = inc_ref.left(className="android.widget.EditText")
-
-    if input_302 and input_302.exists():
-        val_302 = (input_302.get_text() or "").strip()
-        print(f"[BLOK III] Status textbox 302 (jumlah keluarga): '{val_302}'")
-        if val_302 == "1" or (val_302 != "" and val_302 != "0"):
-            print(f"[BLOK III] [SKIP] Textbox 302 (jumlah keluarga) sudah berisi '{val_302}'. Melewati pengetukan tombol 'Increment'.")
-            return True
-
-    print("[BLOK III] [STEP 7] Mengetuk tombol kontrol 'Increment'...")
     increment_btn = d(text="Increment")
     if not increment_btn.exists():
         increment_btn = d(textContains="Increment")
         
     if not increment_btn.exists():
-        print("[BLOK III] [STEP 7] Melakukan scroll mencari tombol Increment...")
+        print("[BLOK III] [STEP 7] Melakukan scroll mencari tombol Increment / label 302...")
         try:
             d(scrollable=True).scroll.to(text="Increment")
         except Exception:
@@ -1801,7 +1778,27 @@ def ketuk_tombol_increment():
                 increment_btn = d(textContains="Increment")
                 break
 
-    if increment_btn.exists():
+    # Setelah berada di posisi tombol Increment/302, periksa nilai textbox 302
+    label_302 = d(textContains="Berapa jumlah keluarga")
+    if not label_302.exists():
+        label_302 = d(textContains="302")
+
+    input_302 = None
+    if label_302.exists():
+        input_302 = label_302.down(className="android.widget.EditText")
+
+    if not input_302 or not input_302.exists():
+        if increment_btn and increment_btn.exists():
+            input_302 = increment_btn.left(className="android.widget.EditText")
+
+    if input_302 and input_302.exists():
+        val_302 = (input_302.get_text() or "").strip()
+        print(f"[BLOK III] Status textbox 302 (jumlah keluarga): '{val_302}'")
+        if val_302 == "1" or (val_302 != "" and val_302 != "0"):
+            print(f"[BLOK III] [SKIP] Textbox 302 (jumlah keluarga) sudah berisi '{val_302}'. Melewati pengetukan tombol 'Increment'.")
+            return True
+
+    if increment_btn and increment_btn.exists():
         increment_btn.click()
         print("[BLOK III] Berhasil mengetuk tombol 'Increment'")
         time.sleep(1)
@@ -1953,7 +1950,7 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
-            loop_swipe_dinamis(delta_y=-100, target_text="1. Berhasil didata", duration=0.1)
+            loop_swipe_dinamis(delta_y=-400, target_text="1. Berhasil didata", duration=0.1)
             time.sleep(SLEEP_SHORT)
 
             # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
