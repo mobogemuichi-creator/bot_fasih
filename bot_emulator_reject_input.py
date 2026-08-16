@@ -1822,59 +1822,55 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            #3-8 Eksekusi buka detail form (retry dari #3 jika masih terdeteksi di 'Daftar Assignment' setelah langkah 8)
-            is_detail_opened = False
-            for detail_attempt in range(1, 4):
-                #3 Cek dan ketuk simbol plus/minus (+ / -) untuk membuka detail (Referensi dump.xml L87-L99 & dump copy.xml L55-L101)
-                cek_dan_ketuk_plus_minus(nometer=nometer, idpel=idpel, sleep_after=SLEEP_SHORT)
+            #3-8 Eksekusi buka detail form
+            #3 Cek dan ketuk simbol plus/minus (+ / -) untuk membuka detail (Referensi dump.xml L87-L99 & dump copy.xml L55-L101)
+            cek_dan_ketuk_plus_minus(nometer=nometer, idpel=idpel, sleep_after=SLEEP_SHORT)
 
-                #4 Loop swipe statis ke bawah
-                loop_swipe_statis(delta_y=-700, loop=1)
-                time.sleep(SLEEP_SHORT)
+            #4 Loop swipe statis ke bawah
+            loop_swipe_statis(delta_y=-700, loop=1)
+            time.sleep(SLEEP_SHORT)
 
-                #4.5 Cek status REJECTED vs SUBMITTED / SUBMIT (PENDING)
-                is_submitted_status = False
-                is_rejected_status = False
-                try:
-                    if (check_exists(d(textContains="SUBMITTED")) or 
-                        check_exists(d(descriptionContains="SUBMITTED")) or
-                        check_exists(d(textContains="SUBMIT (PENDING)")) or 
-                        check_exists(d(descriptionContains="SUBMIT (PENDING)")) or
-                        check_exists(d.xpath("//*[contains(@text, 'SUBMITTED') or contains(@content-desc, 'SUBMITTED') or contains(@text, 'SUBMIT (PENDING)') or contains(@content-desc, 'SUBMIT (PENDING)')]"))):
-                        is_submitted_status = True
+            #4.5 Cek status REJECTED vs SUBMITTED / SUBMIT (PENDING)
+            is_submitted_status = False
+            is_rejected_status = False
+            try:
+                if (check_exists(d(textContains="SUBMITTED")) or 
+                    check_exists(d(descriptionContains="SUBMITTED")) or
+                    check_exists(d(textContains="SUBMIT (PENDING)")) or 
+                    check_exists(d(descriptionContains="SUBMIT (PENDING)")) or
+                    check_exists(d.xpath("//*[contains(@text, 'SUBMITTED') or contains(@content-desc, 'SUBMITTED') or contains(@text, 'SUBMIT (PENDING)') or contains(@content-desc, 'SUBMIT (PENDING)')]"))):
+                    is_submitted_status = True
 
-                    if (check_exists(d(textContains="REJECTED")) or 
-                        check_exists(d(descriptionContains="REJECTED")) or
-                        check_exists(d(textContains="Responden menolak")) or 
-                        check_exists(d(descriptionContains="Responden menolak")) or
-                        check_exists(d.xpath("//*[contains(@text, 'REJECTED') or contains(@content-desc, 'REJECTED') or contains(@text, 'Responden menolak') or contains(@content-desc, 'Responden menolak')]"))):
-                        is_rejected_status = True
-                except Exception:
-                    pass
+                if (check_exists(d(textContains="REJECTED")) or 
+                    check_exists(d(descriptionContains="REJECTED")) or
+                    check_exists(d(textContains="Responden menolak")) or 
+                    check_exists(d(descriptionContains="Responden menolak")) or
+                    check_exists(d.xpath("//*[contains(@text, 'REJECTED') or contains(@content-desc, 'REJECTED') or contains(@text, 'Responden menolak') or contains(@content-desc, 'Responden menolak')]"))):
+                    is_rejected_status = True
+            except Exception:
+                pass
 
-                if is_submitted_status:
-                    print(f"[STATUS] Terdeteksi status 'SUBMITTED / SUBMIT (PENDING)' pada IDPEL {idpel}. Menyimpan status Excel & kembali ke Search Box...")
-                    simpan_status_excel(row, "SUKSES DARI AWAL SUDAH SUBMIT")
-                    sukses_baris = True
-                    break
-                elif is_rejected_status:
-                    print(f"[STATUS] Terdeteksi status 'REJECTED' pada IDPEL {idpel}. Melanjutkan proses input...")
-                else:
-                    print(f"[STATUS] Melanjutkan ke langkah tombol 'Aksi' untuk IDPEL {idpel}...")
+            if is_submitted_status:
+                print(f"[STATUS] Terdeteksi status 'SUBMITTED / SUBMIT (PENDING)' pada IDPEL {idpel}. Menyimpan status Excel & kembali ke Search Box...")
+                simpan_status_excel(row, "SUKSES DARI AWAL SUDAH SUBMIT")
+                sukses_baris = True
+                break
+            elif is_rejected_status:
+                print(f"[STATUS] Terdeteksi status 'REJECTED' pada IDPEL {idpel}. Melanjutkan proses input...")
+            else:
+                print(f"[STATUS] Melanjutkan ke langkah tombol 'Aksi' untuk IDPEL {idpel}...")
 
-                
+            #5 Ketuk tombol 'Aksi'
+            ketuk("Aksi", sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_MEDIUM)
 
-                #5 Ketuk tombol 'Aksi'
-                ketuk("Aksi", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_MEDIUM)
+            #6 Ketuk tombol 'Buka'
+            ketuk("BUKA", sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_MEDIUM)
 
-                #6 Ketuk tombol 'Buka'
-                ketuk("BUKA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_MEDIUM)
-
-                #7 ketuk tombol 'YA'
-                ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)  
+            #7 ketuk tombol 'YA'
+            ketuk("YA", sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
             
             # Cek BLOK hanya punya BLOK I & IV (tanpa BLOK II) atau punya I, II, III, IV (retry jika muncul modal Pengaturan)
             # max_sidebar_attempts = 3
