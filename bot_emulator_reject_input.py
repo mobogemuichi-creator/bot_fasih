@@ -2057,11 +2057,11 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
-            loop_swipe_dinamis(delta_y=-400, target_text="1. Berhasil didata", duration=0.1)
+            loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.1)
             time.sleep(SLEEP_SHORT)
 
             # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
-            if cek_radio_button_tercentang("1. Berhasil didata", exact=True):
+            if cek_radio_button_tercentang("1. Berhasil didata", exact=False):
                 print("[RADIO CHECK] RadioButton '1. Berhasil didata' sudah tercentang.")
             else:
                 print("[RADIO CHECK] RadioButton '1. Berhasil didata' BELUM tercentang. Memulai pengetukan...")
