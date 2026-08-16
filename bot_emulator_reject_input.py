@@ -1650,6 +1650,20 @@ def isi_blok_iii(alamat_val=""):
                 break
         time.sleep(0.5)
 
+    if not (input_a and input_a.exists()):
+        print("[BLOK III] [RETRY NAVIGASI] Field 'a. Provinsi' tidak terdeteksi. Mencoba berpindah kembali ke BLOK III via sidebar...")
+        for nav_retry in range(1, 4):
+            ketuk_sidebar_toggle()
+            time.sleep(SLEEP_SHORT)
+            pilih_blok("III")
+            time.sleep(SLEEP_MEDIUM)
+            label_a = d(textContains="Provinsi")
+            if label_a.exists():
+                input_a = label_a.down(className="android.widget.EditText")
+                if input_a and input_a.exists():
+                    print(f"[BLOK III] [SUKSES NAVIGASI] Berhasil masuk ke BLOK III pada percobaan ke-{nav_retry}.")
+                    break
+
     if input_a and input_a.exists():
         val_existing_a = (input_a.get_text() or "").strip()
         if val_existing_a and val_existing_a != "Pilih salah satu..." and not check_wajib_diisi_field("Provinsi"):
