@@ -2237,10 +2237,23 @@ def proses_update_reject_nik():
             #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
             ketuk_ok_submit_diproses(max_attempts=5)
 
-            #25 menekan tombol "BACK" pada emulator
-            print("[EMULATOR] Menekan tombol Back pada emulator...")
-            d.press("back")
-            time.sleep(SLEEP_LONG)
+            #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
+            print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
+            is_halaman_upload = False
+            for _ in range(5):
+                if (check_exists(d(textContains="Halaman Upload")) or 
+                    check_exists(d(descriptionContains="Halaman Upload")) or 
+                    check_exists(d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]"))):
+                    is_halaman_upload = True
+                    break
+                time.sleep(0.5)
+
+            if is_halaman_upload:
+                print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
+                d.press("back")
+                time.sleep(SLEEP_LONG)
+            else:
+                print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
 
             #24. Tunggu kembali ke halaman 'Daftar Assignment'
             sukses_da = tunggu_loading("Daftar Assignment", timeout=15)
