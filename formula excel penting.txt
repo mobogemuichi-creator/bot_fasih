@@ -1,0 +1,21 @@
+yang harus diperhatikan di excel data_tugas
+kolom nomor meter terkadang isinya idpel, harus di ganti atau dihapus saja
+  =len(B2)
+
+kolom nama jangan sampai ada karakter lain selain alfabeth a-z
+  =SUBSTITUTE(SUBSTITUTE(C2; "["; ""); "]"; "")
+
+filter semua cell yang isi sensor bintang * terlebih dahulu, fokus baca data yang tidak ada bintang dahulu saja.
+  =TRIM(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(C2; "."; " "); ","; ""); "("; ""); ")"; ""); "0"; ""); "1"; ""); "2"; ""); "3"; ""); "4"; ""); "5"; ""); "6"; ""); "7"; ""); "8"; ""); "9"; ""); "-"; ""))
+
+CEK SENSOR AMAN
+  =IF(OR(ISNUMBER(FIND("*"; TEXT(D2;""))); ISNUMBER(FIND("*"; TEXT(H2;"")))); "SENSOR"; "AMAN")
+
+CEK VALIDASI NIK
+  =IF(OR(LEN(G2)<>16; ISERROR(VALUE(G2))); "Format NIK Salah"; IF(ISERROR(MATCH(VALUE(LEFT(G2;2)); {11;12;13;14;15;16;17;18;19;21;31;32;33;34;35;36;51;52;53;61;62;63;64;65;71;72;73;74;75;76;81;82;91;92;93;94;95;96}; 0)); "Ilegal (Kode Wilayah Salah)"; IF(MONTH(DATE(2000+VALUE(MID(G2;11;2)); VALUE(MID(G2;9;2)); IF(VALUE(MID(G2;7;2))>40; VALUE(MID(G2;7;2))-40; VALUE(MID(G2;7;2)))))<>VALUE(MID(G2;9;2)); "Tanggal Lahir Tidak Valid"; "Valid")))
+
+Menghilangkan nomor dan tanda baca di kolom NAMA pelanggan
+=TRIM(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(C2; "."; " "); ","; ""); "("; ""); ")"; ""); "0"; ""); "1"; ""); "2"; ""); "3"; ""); "4"; ""); "5"; ""); "6"; ""); "7"; ""); "8"; ""); "9"; ""); "-"; ""))
+
+CEK VALIDASI NIK
+  =IF(OR(LEN(G2)<>16; ISERROR(VALUE(G2))); "Format NIK Salah"; IF(ISERROR(MATCH(VALUE(LEFT(G2;2)); {11;12;13;14;15;16;17;18;19;21;31;32;33;34;35;36;51;52;53;61;62;63;64;65;71;72;73;74;75;76;81;82;91;92;93;94;95;96}; 0)); "Ilegal (Kode Wilayah Salah)"; IF(MONTH(DATE(2000+VALUE(MID(G2;11;2)); VALUE(MID(G2;9;2)); IF(VALUE(MID(G2;7;2))>40; VALUE(MID(G2;7;2))-40; VALUE(MID(G2;7;2)))))<>VALUE(MID(G2;9;2)); "Tanggal Lahir Tidak Valid"; "Valid")))

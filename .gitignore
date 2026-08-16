@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary & Log files
+*.tmp
+*.log
+temp_*.txt
+
+# Archive files
+*.zip
+
+# Large data Excel & XML Dumps (opsional: hapus dari gitignore jika ingin disinkronkan)
+dump*.xml
+*.xlsx
