@@ -1978,38 +1978,6 @@ def proses_update_reject_nik():
             #7 ketuk tombol 'YA'
             ketuk("YA", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
-            
-            # Cek BLOK hanya punya BLOK I & IV (tanpa BLOK II) atau punya I, II, III, IV (retry jika muncul modal Pengaturan)
-            # max_sidebar_attempts = 3
-            # for sidebar_attempt in range(1, max_sidebar_attempts + 1):
-            #     ketuk_sidebar_toggle()
-            #     time.sleep(SLEEP_SHORT)
-
-            #     is_pengaturan = False
-            #     try:
-            #         if check_exists(d(textContains="Pengaturan")) or check_exists(d(descriptionContains="Pengaturan")):
-            #             is_pengaturan = True
-            #     except Exception:
-            #         pass
-
-            #     if is_pengaturan:
-            #         print(f"[PENGATURAN] Terdeteksi modal 'Pengaturan' saat ketuk sidebar (percobaan ke-{sidebar_attempt}/{max_sidebar_attempts}). Mengetuk 'Batal' lalu mengulangi...")
-            #         ketuk("Batal", sleep_after=SLEEP_SHORT)
-            #         time.sleep(SLEEP_SHORT)
-            #         continue
-            #     else:
-            #         break
-
-            #1 swipe keatas statis untuk memastikan halaman berada di paling atas
-            # loop_swipe_statis(delta_y=-700, loop=1)
-            # time.sleep(SLEEP_SHORT)
-            # loop_swipe_statis(delta_y=800, loop=1)
-            # time.sleep(SLEEP_SHORT)
-
-            # print("[BLOK CHECK] Memilih BLOK I...")
-            # ketuk_sidebar_toggle()
-            # time.sleep(SLEEP_SHORT)
-            # pilih_blok("I")
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
@@ -2229,11 +2197,7 @@ def proses_update_reject_nik():
             ketuk("YA", sleep_after=SLEEP_LONG)
             time.sleep(SLEEP_LONG)
 
-            # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
-            if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
-                print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
-                return
-
+            
             #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
             ketuk_ok_submit_diproses(max_attempts=5)
 
@@ -2273,10 +2237,10 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
-            if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
-                print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
-                return
+            # # Pause proses dengan pilihan stop seluruh proses atau lanjutkan proses
+            # if not konfirmasi_stop_atau_lanjut("Pause sebelum mengirim data (Kirim). Lanjutkan atau Stop seluruh proses?"):
+            #     print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
+            #     return
 
 def main():
     try:

@@ -19,7 +19,7 @@ echo.
 where git >nul 2>&1
 if %errorLevel% neq 0 (
     echo [PERINGATAN] Git belum ter-install di komputer ini.
-    echo [INFO] Mengunduh & meng-install Git secara otomatis via Windows Winget...
+    echo [INFO] Mengunduh dan meng-install Git secara otomatis via Windows Winget...
     echo.
     winget install --id Git.Git -e --source winget --accept-source-agreements --accept-package-agreements
     echo.
@@ -43,11 +43,12 @@ if %errorLevel% neq 0 (
         )
         echo.
     ) else (
-        echo [1/2] Memeriksa & mengunduh pembaruan dari GitHub...
+        echo [1/2] Memeriksa dan mengunduh pembaruan dari GitHub...
         if exist "konfigurasi.py" (
             git update-index --skip-worktree konfigurasi.py >nul 2>&1
         )
-        git pull origin main
+        git fetch origin main
+        git reset --hard origin/main
         echo.
     )
 )

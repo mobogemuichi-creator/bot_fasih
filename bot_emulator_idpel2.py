@@ -463,6 +463,68 @@ def klik_opsi_dropdown(d, teks_pilihan):
     time.sleep(0.5)
     return False
 
+def ketuk_ok_submit_diproses(max_attempts=5):
+    """
+    Memeriksa dan mengetuk tombol 'OK' pada modal 'Submit diproses'.
+    Jika setelah diketuk modal masih tetap muncul ('Submit diproses' masih ada di layar),
+    akan mengulang pengetukan hingga `max_attempts` kali (default 5).
+    Jika setelah 5x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
+    """
+    print("\n[SUBMIT DIPROSES] Memeriksa modal 'Submit diproses'...")
+    
+    # Koordinat tengah tombol OK dari bounds [137,1639][919,1744] (id: btn_submit_progress_close)
+    ok_bounds_x, ok_bounds_y = 528, 1691
+    
+    for attempt in range(1, max_attempts + 1):
+        is_submit_modal = (
+            d(textContains="Submit diproses").exists or
+            d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title").exists or
+            d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close").exists or
+            d(text="OK").exists
+        )
+        
+        if not is_submit_modal:
+            print("[SUBMIT DIPROSES] Modal 'Submit diproses' tidak terdeteksi (sudah tertutup).")
+            return True
+
+        print(f"[SUBMIT DIPROSES] Terdeteksi modal 'Submit diproses'. Percobaan ketuk 'OK' ke-{attempt}/{max_attempts}...")
+        
+        clicked = False
+        try:
+            btn_close = d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")
+            if btn_close.exists:
+                btn_close.click()
+                clicked = True
+            elif d(text="OK").exists:
+                d(text="OK").click()
+                clicked = True
+            else:
+                clicked = ketuk("OK", sleep_after=SLEEP_SHORT)
+        except Exception as e:
+            print(f"[WARNING] Klik tombol OK via elemen gagal: {e}")
+
+        if not clicked:
+            print(f"[SUBMIT DIPROSES] Klik via elemen gagal. Mengetuk koordinat statis bounds ({ok_bounds_x}, {ok_bounds_y})...")
+            d.click(ok_bounds_x, ok_bounds_y)
+
+        time.sleep(2)
+
+        still_exists = (
+            d(textContains="Submit diproses").exists or
+            d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title").exists
+        )
+        if not still_exists:
+            print(f"[SUBMIT DIPROSES] [SUKSES] Modal 'Submit diproses' berhasil ditutup pada percobaan ke-{attempt}.")
+            return True
+        else:
+            print(f"[SUBMIT DIPROSES] [RETRY] Modal 'Submit diproses' masih ada di layar setelah percobaan ke-{attempt}.")
+
+    # Fallback jika 5x percobaan elemen tidak berhasil menutup modal
+    print(f"[SUBMIT DIPROSES] [FALLBACK STATIS] Sudah {max_attempts}x percobaan dan modal masih ada. Mengetuk koordinat statis bounds OK ({ok_bounds_x}, {ok_bounds_y})...")
+    d.click(ok_bounds_x, ok_bounds_y)
+    time.sleep(2)
+    return True
+
 def tampilkan_ringkasan_akhir(sheet):
     """Menampilkan rekapitulasi ringkasan data di akhir proses"""
     if sheet is None:
@@ -2174,29 +2236,26 @@ def main():
                     print("[BLOK IV] Tombol 'Kirim' sudah tidak terdeteksi. Lanjut ke STEP 8...")
                     break
 
-            #25 ketuk "OK" dan ulang jika teks "Submit diproses" masih ada
-            ketuk("OK", sleep_after=SLEEP_LONG)
-            time.sleep(SLEEP_LONG)
+            #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
+            ketuk_ok_submit_diproses(max_attempts=5)
 
-            while True:
-                submit_diproses = d(textContains="Submit diproses")
-                if not submit_diproses.exists():
-                    submit_diproses = d(textContains="submit diproses")
-                if not submit_diproses.exists():
-                    submit_diproses = d(textContains="SUBMIT DIPROSES")
-                
-                if submit_diproses.exists():
-                    print("[BLOK IV] Teks 'Submit diproses' masih terdeteksi, mengetuk 'OK' kembali...")
-                    ketuk("OK", sleep_after=SLEEP_LONG)
-                    time.sleep(SLEEP_LONG)
-                else:
-                    print("[BLOK IV] Teks 'Submit diproses' sudah tidak terdeteksi.")
+            #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
+            print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
+            is_halaman_upload = False
+            for _ in range(5):
+                if (d(textContains="Halaman Upload").exists or 
+                    d(descriptionContains="Halaman Upload").exists or 
+                    d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]").exists):
+                    is_halaman_upload = True
                     break
+                time.sleep(0.5)
 
-            #25 menekan tombol "BACK" pada emulator
-            print("[EMULATOR] Menekan tombol Back pada emulator...")
-            d.press("back")
-            time.sleep(SLEEP_LONG)
+            if is_halaman_upload:
+                print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
+                d.press("back")
+                time.sleep(SLEEP_LONG)
+            else:
+                print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
 
             print("\n[BLOK IV] [STEP 8] Menunggu loading submit selesai...")
             try:
