@@ -1869,24 +1869,20 @@ def isi_blok_iii(alamat_val=""):
                     break
 
     if input_a and input_a.exists():
-        val_existing_a = (input_a.get_text() or "").strip()
-        if val_existing_a and val_existing_a != "Pilih salah satu..." and not check_wajib_diisi_field("Provinsi"):
-            print(f"[BLOK III] [SKIP] EditText 'a. Provinsi' sudah terisi: '{val_existing_a}'. Lanjut ke field berikutnya.")
-        else:
-            provinsi_clean = ekstrak_nama_saja(provinsi)
-            for prov_attempt in range(1, 3):
-                input_a.set_text(str(provinsi_clean))
-                print(f"[BLOK III] Berhasil mengisi Provinsi: '{provinsi_clean}' (Percobaan ke-{prov_attempt})")
-                time.sleep(0.5)
-                klik_opsi_dropdown(d, provinsi)
-                time.sleep(0.5)
+        provinsi_clean = ekstrak_nama_saja(provinsi)
+        for prov_attempt in range(1, 3):
+            input_a.set_text(str(provinsi_clean))
+            print(f"[BLOK III] Berhasil mengisi Provinsi: '{provinsi_clean}' (Percobaan ke-{prov_attempt})")
+            time.sleep(0.5)
+            klik_opsi_dropdown(d, provinsi)
+            time.sleep(0.5)
 
-                if check_wajib_diisi_field("Provinsi"):
-                    print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Provinsi (percobaan ke-{prov_attempt}). Mengulangi pengisian Provinsi...")
-                    time.sleep(0.5)
-                else:
-                    print(f"[BLOK III] Provinsi '{provinsi_clean}' berhasil dipilih.")
-                    break
+            if check_wajib_diisi_field("Provinsi"):
+                print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Provinsi (percobaan ke-{prov_attempt}). Mengulangi pengisian Provinsi...")
+                time.sleep(0.5)
+            else:
+                print(f"[BLOK III] Provinsi '{provinsi_clean}' berhasil dipilih.")
+                break
     else:
         raise Exception("Input text box untuk 'a. Provinsi' tidak ditemukan.")
 
@@ -1902,24 +1898,20 @@ def isi_blok_iii(alamat_val=""):
         time.sleep(0.5)
 
     if input_b and input_b.exists():
-        val_existing_b = (input_b.get_text() or "").strip()
-        if val_existing_b and val_existing_b != "Pilih salah satu..." and not check_wajib_diisi_field("Kabupaten/Kota"):
-            print(f"[BLOK III] [SKIP] EditText 'b. Kabupaten/Kota' sudah terisi: '{val_existing_b}'. Lanjut ke field berikutnya.")
-        else:
-            kabupaten_clean = ekstrak_nama_saja(kabupaten)
-            for kab_attempt in range(1, 3):
-                input_b.set_text(str(kabupaten_clean))
-                print(f"[BLOK III] Berhasil mengisi Kabupaten/Kota: '{kabupaten_clean}' (Percobaan ke-{kab_attempt})")
-                time.sleep(0.5)
-                klik_opsi_dropdown(d, kabupaten)
-                time.sleep(0.5)
+        kabupaten_clean = ekstrak_nama_saja(kabupaten)
+        for kab_attempt in range(1, 3):
+            input_b.set_text(str(kabupaten_clean))
+            print(f"[BLOK III] Berhasil mengisi Kabupaten/Kota: '{kabupaten_clean}' (Percobaan ke-{kab_attempt})")
+            time.sleep(0.5)
+            klik_opsi_dropdown(d, kabupaten)
+            time.sleep(0.5)
 
-                if check_wajib_diisi_field("Kabupaten/Kota"):
-                    print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Kabupaten/Kota (percobaan ke-{kab_attempt}). Mengulangi pengisian Kabupaten/Kota...")
-                    time.sleep(0.5)
-                else:
-                    print(f"[BLOK III] Kabupaten/Kota '{kabupaten_clean}' berhasil dipilih.")
-                    break
+            if check_wajib_diisi_field("Kabupaten/Kota"):
+                print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Kabupaten/Kota (percobaan ke-{kab_attempt}). Mengulangi pengisian Kabupaten/Kota...")
+                time.sleep(0.5)
+            else:
+                print(f"[BLOK III] Kabupaten/Kota '{kabupaten_clean}' berhasil dipilih.")
+                break
     else:
         raise Exception("Input text box untuk 'b. Kabupaten/Kota' tidak ditemukan.")
 
@@ -1939,24 +1931,20 @@ def isi_blok_iii(alamat_val=""):
         time.sleep(0.5)
 
     if input_c and input_c.exists():
-        val_existing_c = (input_c.get_text() or "").strip()
-        if val_existing_c and val_existing_c != "Pilih salah satu..." and not check_wajib_diisi_field("Kecamatan"):
-            print(f"[BLOK III] [SKIP] EditText 'c. Kecamatan' sudah terisi: '{val_existing_c}'. Lanjut ke field berikutnya.")
-        else:
-            kecamatan_clean = ekstrak_nama_saja(kecamatan)
-            for kec_attempt in range(1, 3):
-                input_c.set_text(str(kecamatan_clean))
-                print(f"[BLOK III] Berhasil mengisi Kecamatan: '{kecamatan_clean}' (Percobaan ke-{kec_attempt})")
-                time.sleep(0.5)
-                klik_opsi_dropdown(d, kecamatan)
-                time.sleep(0.5)
+        kecamatan_clean = ekstrak_nama_saja(kecamatan)
+        for kec_attempt in range(1, 3):
+            input_c.set_text(str(kecamatan_clean))
+            print(f"[BLOK III] Berhasil mengisi Kecamatan: '{kecamatan_clean}' (Percobaan ke-{kec_attempt})")
+            time.sleep(0.5)
+            klik_opsi_dropdown(d, kecamatan)
+            time.sleep(0.5)
 
-                if check_wajib_diisi_field("Kecamatan"):
-                    print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Kecamatan (percobaan ke-{kec_attempt}). Mengulangi pengisian Kecamatan...")
-                    time.sleep(0.5)
-                else:
-                    print(f"[BLOK III] Kecamatan '{kecamatan_clean}' berhasil dipilih.")
-                    break
+            if check_wajib_diisi_field("Kecamatan"):
+                print(f"[BLOK III] [RETRY] Terdeteksi teks 'Wajib diisi' KHUSUS pada Kecamatan (percobaan ke-{kec_attempt}). Mengulangi pengisian Kecamatan...")
+                time.sleep(0.5)
+            else:
+                print(f"[BLOK III] Kecamatan '{kecamatan_clean}' berhasil dipilih.")
+                break
     else:
         raise Exception("Input text box untuk 'c. Kecamatan' tidak ditemukan.")
 
@@ -1976,57 +1964,53 @@ def isi_blok_iii(alamat_val=""):
         time.sleep(0.5)
 
     if input_d and input_d.exists():
-        val_existing_d = (input_d.get_text() or "").strip()
-        if val_existing_d and val_existing_d != "Pilih salah satu..." and not check_wajib_diisi_field("Desa/Kelurahan"):
-            print(f"[BLOK III] [SKIP] EditText 'd. Desa/Kelurahan' sudah terisi: '{val_existing_d}'. Lanjut ke field berikutnya.")
-        else:
-            desa_clean = ekstrak_nama_saja(desa)
-            desa_sukses = False
-            max_attempts_desa = max(1, len(desa_clean) - 3 + 1)
+        desa_clean = ekstrak_nama_saja(desa)
+        desa_sukses = False
+        max_attempts_desa = max(1, len(desa_clean) - 3 + 1)
 
-            for attempt_desa in range(max_attempts_desa):
-                current_input = desa_clean if attempt_desa == 0 else desa_clean[:-attempt_desa]
+        for attempt_desa in range(max_attempts_desa):
+            current_input = desa_clean if attempt_desa == 0 else desa_clean[:-attempt_desa]
 
+            input_d.clear_text()
+            time.sleep(0.5)
+            input_d.set_text(str(current_input))
+            print(f"[BLOK III] Mengisi Desa/Kelurahan: '{current_input}' (Percobaan {attempt_desa + 1}/{max_attempts_desa})")
+            time.sleep(0.5)
+
+            if d(textContains="Pilihan tidak ditemukan").exists():
+                print(f"[BLOK III] Terdeteksi 'Pilihan tidak ditemukan' untuk '{current_input}'. Menutup overlay, menghapus input, dan mengulang...")
+                d.click(540, 300)
+                time.sleep(0.5)
                 input_d.clear_text()
                 time.sleep(0.5)
-                input_d.set_text(str(current_input))
-                print(f"[BLOK III] Mengisi Desa/Kelurahan: '{current_input}' (Percobaan {attempt_desa + 1}/{max_attempts_desa})")
-                time.sleep(0.5)
+                continue
 
-                if d(textContains="Pilihan tidak ditemukan").exists():
-                    print(f"[BLOK III] Terdeteksi 'Pilihan tidak ditemukan' untuk '{current_input}'. Menutup overlay, menghapus input, dan mengulang...")
-                    d.click(540, 300)
-                    time.sleep(0.5)
+            for retry_wajib in range(1, 3):
+                if retry_wajib > 1:
+                    print(f"[BLOK III] [RETRY DESA] Mengulangi pengisian Desa/Kelurahan '{current_input}' karena terdeteksi 'Wajib diisi'...")
                     input_d.clear_text()
                     time.sleep(0.5)
-                    continue
+                    input_d.set_text(str(current_input))
+                    time.sleep(0.5)
 
-                for retry_wajib in range(1, 3):
-                    if retry_wajib > 1:
-                        print(f"[BLOK III] [RETRY DESA] Mengulangi pengisian Desa/Kelurahan '{current_input}' karena terdeteksi 'Wajib diisi'...")
-                        input_d.clear_text()
+                if klik_opsi_dropdown(d, current_input) or klik_opsi_dropdown(d, desa):
+                    time.sleep(0.5)
+                    if check_wajib_diisi_field("Desa/Kelurahan"):
+                        print(f"[BLOK III] [RETRY] Terdeteksi 'Wajib diisi' KHUSUS pada Desa/Kelurahan untuk '{current_input}' (Percobaan {retry_wajib})...")
                         time.sleep(0.5)
-                        input_d.set_text(str(current_input))
-                        time.sleep(0.5)
-
-                    if klik_opsi_dropdown(d, current_input) or klik_opsi_dropdown(d, desa):
-                        time.sleep(0.5)
-                        if check_wajib_diisi_field("Desa/Kelurahan"):
-                            print(f"[BLOK III] [RETRY] Terdeteksi 'Wajib diisi' KHUSUS pada Desa/Kelurahan untuk '{current_input}' (Percobaan {retry_wajib})...")
-                            time.sleep(0.5)
-                        else:
-                            print(f"[BLOK III] Berhasil memilih opsi Desa/Kelurahan untuk '{current_input}'.")
-                            desa_sukses = True
-                            break
                     else:
-                        print(f"[BLOK III] Opsi Desa/Kelurahan '{current_input}' tidak berhasil diklik.")
+                        print(f"[BLOK III] Berhasil memilih opsi Desa/Kelurahan untuk '{current_input}'.")
+                        desa_sukses = True
                         break
-
-                if desa_sukses:
+                else:
+                    print(f"[BLOK III] Opsi Desa/Kelurahan '{current_input}' tidak berhasil diklik.")
                     break
 
-            if not desa_sukses:
-                raise Exception(f"Error : tidak menemukan Desa/Kelurahan {desa_clean}")
+            if desa_sukses:
+                break
+
+        if not desa_sukses:
+            raise Exception(f"Error : tidak menemukan Desa/Kelurahan {desa_clean}")
     else:
         raise Exception("Input text box untuk 'd. Desa/Kelurahan' tidak ditemukan.")
 
