@@ -377,6 +377,34 @@ def ketuk(target_text, exact=False, sleep_after=SLEEP_SHORT):
     return success
 
 
+def normalisasi_nama_desa(val):
+    """
+    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian & Pemecutan:
+    - 'PADANG SAMBIAN KAJA' -> 'PADANGSAMBIAN KAJA'
+    - 'PADANG SAMBIAN KELOD' / 'PADANGSAMBIAN KELOD' -> 'PADANGSAMBIAN KLOD'
+    - 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
+    - 'PEMECUTAN KELOD' -> 'PEMECUTAN KLOD'
+    """
+    if not val:
+        return val
+    replacements = [
+        ("PADANG SAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
+        ("PADANGSAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
+        ("Padang Sambian Kelod", "PADANGSAMBIAN KLOD"),
+        ("Padangsambian Kelod", "PADANGSAMBIAN KLOD"),
+        ("PADANG SAMBIAN KAJA", "PADANGSAMBIAN KAJA"),
+        ("Padang Sambian Kaja", "PADANGSAMBIAN KAJA"),
+        ("PADANG SAMBIAN", "PADANGSAMBIAN"),
+        ("Padang Sambian", "PADANGSAMBIAN"),
+        ("PEMECUTAN KELOD", "PEMECUTAN KLOD"),
+        ("Pemecutan Kelod", "PEMECUTAN KLOD"),
+    ]
+    for old_str, new_str in replacements:
+        if old_str in val:
+            val = val.replace(old_str, new_str)
+    return val
+
+
 def baca_temp_alamat():
     # Default fallbacks jika file tidak ditemukan
     data = {
@@ -399,7 +427,7 @@ def baca_temp_alamat():
                         val = val.strip()
                         # Normalisasi key agar cocok
                         if "Desa" in key or "Kelurahan" in key:
-                            data["Desa/Kelurahan"] = val
+                            data["Desa/Kelurahan"] = normalisasi_nama_desa(val)
                         elif "Kabupaten" in key or "Kota" in key:
                             data["Kabupaten"] = val
                         elif key in data:
@@ -1054,6 +1082,10 @@ def main():
                     # Fallback jika benar-benar tidak ditemukan di screen
                     if not info_alamat[key]:
                         info_alamat[key] = f"{key}: (tidak ditemukan)"
+
+                # Normalisasi nama Desa/Kelurahan jika ada variasi Padang Sambian / Pemecutan
+                if info_alamat.get("Desa/Kelurahan"):
+                    info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
                 
                 # Validasi jika data alamat server kosong / hanya kurung siku "[]"
                 alamat_kosong = False

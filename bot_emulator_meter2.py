@@ -379,10 +379,11 @@ def ketuk(target_text, exact=False, sleep_after=SLEEP_SHORT):
 
 def normalisasi_nama_desa(val):
     """
-    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian:
+    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian & Pemecutan:
     - 'PADANG SAMBIAN KAJA' -> 'PADANGSAMBIAN KAJA'
     - 'PADANG SAMBIAN KELOD' / 'PADANGSAMBIAN KELOD' -> 'PADANGSAMBIAN KLOD'
     - 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
+    - 'PEMECUTAN KELOD' -> 'PEMECUTAN KLOD'
     """
     if not val:
         return val
@@ -395,6 +396,8 @@ def normalisasi_nama_desa(val):
         ("Padang Sambian Kaja", "PADANGSAMBIAN KAJA"),
         ("PADANG SAMBIAN", "PADANGSAMBIAN"),
         ("Padang Sambian", "PADANGSAMBIAN"),
+        ("PEMECUTAN KELOD", "PEMECUTAN KLOD"),
+        ("Pemecutan Kelod", "PEMECUTAN KLOD"),
     ]
     for old_str, new_str in replacements:
         if old_str in val:

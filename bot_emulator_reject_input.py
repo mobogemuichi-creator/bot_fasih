@@ -919,6 +919,9 @@ def check_dan_tutup_pengaturan():
                 d.click(646, 1677)
 
             time.sleep(SLEEP_SHORT)
+            print("[PENGATURAN] Melakukan 1x swipe down setelah mengetuk 'Batal'...")
+            loop_swipe_statis(delta_y=700, loop=1)
+            time.sleep(SLEEP_SHORT)
             return True
     except Exception as e:
         print(f"[WARNING] Error pengecekan Pengaturan: {e}")
@@ -1323,10 +1326,11 @@ def input_textbox(label_text, value, bounds_fallback=None, exact=False, sleep_af
 
 def normalisasi_nama_desa(val):
     """
-    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian:
+    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian & Pemecutan:
     - 'PADANG SAMBIAN KAJA' -> 'PADANGSAMBIAN KAJA'
     - 'PADANG SAMBIAN KELOD' / 'PADANGSAMBIAN KELOD' -> 'PADANGSAMBIAN KLOD'
     - 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
+    - 'PEMECUTAN KELOD' -> 'PEMECUTAN KLOD'
     """
     if not val:
         return val
@@ -1339,6 +1343,8 @@ def normalisasi_nama_desa(val):
         ("Padang Sambian Kaja", "PADANGSAMBIAN KAJA"),
         ("PADANG SAMBIAN", "PADANGSAMBIAN"),
         ("Padang Sambian", "PADANGSAMBIAN"),
+        ("PEMECUTAN KELOD", "PEMECUTAN KLOD"),
+        ("Pemecutan Kelod", "PEMECUTAN KLOD"),
     ]
     for old_str, new_str in replacements:
         if old_str in val:
@@ -2520,11 +2526,32 @@ def proses_update_reject_nik():
             ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
 
-            #24 ketuk tombol "YA"
-            ketuk("YA", sleep_after=SLEEP_LONG)
-            time.sleep(SLEEP_LONG)
+            #24 ketuk tombol "YA" (ulangi jika 'Submit diproses' belum muncul)
+            max_ya_attempts = 5
+            submit_muncul = False
+            for ya_attempt in range(1, max_ya_attempts + 1):
+                print(f"[SUBMIT] Mengetuk tombol 'YA' (Percobaan {ya_attempt}/{max_ya_attempts})...")
+                ketuk("YA", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_MEDIUM)
 
-            
+                is_submit_modal = (
+                    check_exists(d(textContains="Submit diproses")) or
+                    check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
+                    check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
+                    check_exists(d(text="OK"))
+                )
+
+                if is_submit_modal:
+                    print(f"[SUBMIT] [SUKSES] Modal 'Submit diproses' terdeteksi setelah ketuk 'YA' pada percobaan ke-{ya_attempt}.")
+                    submit_muncul = True
+                    break
+                else:
+                    print(f"[SUBMIT] [RETRY] Modal 'Submit diproses' belum muncul (percobaan ke-{ya_attempt}/{max_ya_attempts}). Mengulangi ketuk 'YA'...")
+                    time.sleep(SLEEP_SHORT)
+
+            if not submit_muncul:
+                print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
+
             #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
             ketuk_ok_submit_diproses(max_attempts=5)
 
