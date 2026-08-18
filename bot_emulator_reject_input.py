@@ -2295,6 +2295,21 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
+
+            # Cek jika data alamat mengandung kata 'null' (case-insensitive)
+            is_alamat_null = False
+            for k, v in (alamat_dict or {}).items():
+                if "null" in str(v).lower():
+                    is_alamat_null = True
+                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+
+            if is_alamat_null:
+                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} mengandung kata 'null'. Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error: Alamat NULL")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+
             loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.5)
             time.sleep(SLEEP_LONG)
 
