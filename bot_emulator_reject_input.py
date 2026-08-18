@@ -1265,6 +1265,24 @@ def input_textbox(label_text, value, bounds_fallback=None, exact=False, sleep_af
         time.sleep(sleep_after)
     return success
 
+def normalisasi_nama_desa(val):
+    """
+    Normalisasi penulisan Desa/Kelurahan:
+    - "PADANGSAMBIAN KELOD" atau "PADANG SAMBIAN KELOD" -> "PADANG SAMBIAN KLOD"
+    - "PADANGSAMBIAN KAJA" -> "PADANG SAMBIAN KAJA"
+    - "PADANGSAMBIAN" -> "PADANG SAMBIAN"
+    """
+    if not val:
+        return val
+    res = str(val)
+    if "PADANGSAMBIAN KELOD" in res or "PADANG SAMBIAN KELOD" in res:
+        res = res.replace("PADANGSAMBIAN KELOD", "PADANG SAMBIAN KLOD").replace("PADANG SAMBIAN KELOD", "PADANG SAMBIAN KLOD")
+    if "PADANGSAMBIAN KAJA" in res:
+        res = res.replace("PADANGSAMBIAN KAJA", "PADANG SAMBIAN KAJA")
+    if "PADANGSAMBIAN" in res:
+        res = res.replace("PADANGSAMBIAN", "PADANG SAMBIAN")
+    return res
+
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
     Fungsi untuk men-scroll dan mengambil data alamat (Provinsi, Kabupaten, Kecamatan, Desa/Kelurahan, Alamat)
@@ -1398,6 +1416,9 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
 
     if alamat_kosong:
         print(f"[BLOK I] Data alamat server kosong (berisi '[]') untuk IDPEL {idpel}.")
+
+    if info_alamat.get("Desa/Kelurahan"):
+        info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
 
     # Simpan ke file file_output (temp_alamat.txt)
     try:
@@ -1558,7 +1579,7 @@ def baca_temp_alamat():
                         key = key.strip()
                         val = val.strip()
                         if "Desa" in key or "Kelurahan" in key:
-                            data["Desa/Kelurahan"] = val
+                            data["Desa/Kelurahan"] = normalisasi_nama_desa(val)
                         elif "Kabupaten" in key or "Kota" in key:
                             data["Kabupaten"] = val
                         elif key in data:
@@ -1673,7 +1694,7 @@ def isi_blok_iii(alamat_val=""):
     provinsi = alamat_data["Provinsi"]
     kabupaten = alamat_data["Kabupaten"]
     kecamatan = alamat_data["Kecamatan"]
-    desa = alamat_data["Desa/Kelurahan"]
+    desa = normalisasi_nama_desa(alamat_data["Desa/Kelurahan"])
     if not alamat_val:
         alamat_val = alamat_data.get("Alamat", "")
 
