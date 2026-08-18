@@ -117,10 +117,10 @@ def baca_data_reject(file_path=EXCEL_FILE):
             no_telp_val = row[no_telp_idx] if (no_telp_idx != -1 and no_telp_idx < len(row)) else None
             status_val = row[status_idx] if (status_idx != -1 and status_idx < len(row)) else None
 
-            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', atau 'TIDAK DITEMUKAN'
+            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', atau 'ERROR'
             if status_val is not None:
                 status_str = str(status_val).strip().upper()
-                if "SUKSES" in status_str or "SUBMIT" in status_str or "TIDAK DITEMUKAN" in status_str:
+                if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR"]):
                     skipped_count += 1
                     continue
 
@@ -1267,21 +1267,86 @@ def input_textbox(label_text, value, bounds_fallback=None, exact=False, sleep_af
 
 def normalisasi_nama_desa(val):
     """
-    Normalisasi penulisan Desa/Kelurahan:
-    - "PADANGSAMBIAN KELOD" atau "PADANG SAMBIAN KELOD" -> "PADANG SAMBIAN KLOD"
-    - "PADANGSAMBIAN KAJA" -> "PADANG SAMBIAN KAJA"
-    - "PADANGSAMBIAN" -> "PADANG SAMBIAN"
+    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian:
+    - 'PADANG SAMBIAN KAJA' -> 'PADANGSAMBIAN KAJA'
+    - 'PADANG SAMBIAN KELOD' / 'PADANGSAMBIAN KELOD' -> 'PADANGSAMBIAN KLOD'
+    - 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
     """
     if not val:
         return val
-    res = str(val)
-    if "PADANGSAMBIAN KELOD" in res or "PADANG SAMBIAN KELOD" in res:
-        res = res.replace("PADANGSAMBIAN KELOD", "PADANG SAMBIAN KLOD").replace("PADANG SAMBIAN KELOD", "PADANG SAMBIAN KLOD")
-    if "PADANGSAMBIAN KAJA" in res:
-        res = res.replace("PADANGSAMBIAN KAJA", "PADANG SAMBIAN KAJA")
-    if "PADANGSAMBIAN" in res:
-        res = res.replace("PADANGSAMBIAN", "PADANG SAMBIAN")
-    return res
+    replacements = [
+        ("PADANG SAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
+        ("PADANGSAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
+        ("Padang Sambian Kelod", "PADANGSAMBIAN KLOD"),
+        ("Padangsambian Kelod", "PADANGSAMBIAN KLOD"),
+        ("PADANG SAMBIAN KAJA", "PADANGSAMBIAN KAJA"),
+        ("Padang Sambian Kaja", "PADANGSAMBIAN KAJA"),
+        ("PADANG SAMBIAN", "PADANGSAMBIAN"),
+        ("Padang Sambian", "PADANGSAMBIAN"),
+    ]
+    for old_str, new_str in replacements:
+        if old_str in val:
+            val = val.replace(old_str, new_str)
+    return val
+
+def verifikasi_nama_penghuni_terisi(d_dev, nama_expected=""):
+    """
+    Melakukan scan halaman untuk memverifikasi apakah '201. Nama penghuni' sudah terisi (tidak kosong / bukan 'Wajib diisi').
+    """
+    val_existing = ""
+    try:
+        label = d_dev(textContains="201. Nama penghuni")
+        if not check_exists(label):
+            label = d_dev(descriptionContains="201. Nama penghuni")
+
+        if check_exists(label):
+            input_el = label.down(className="android.widget.EditText")
+            if not check_exists(input_el):
+                input_el = label.sibling(className="android.widget.EditText")
+            if check_exists(input_el):
+                val_existing = (input_el.get_text() or "").strip()
+
+        if not val_existing:
+            xp = "//*[contains(@text, '201. Nama penghuni') or contains(@content-desc, '201. Nama penghuni')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                val_existing = (d_dev.xpath(xp).info.get('text', '') or "").strip()
+    except Exception as e:
+        print(f"[SCAN NAMA] Exception saat verifikasi nama: {e}")
+
+    print(f"[SCAN NAMA] Hasil scan field '201. Nama penghuni': '{val_existing}'")
+    if val_existing and val_existing.lower() not in ["wajib diisi", "pilih salah satu...", ""]:
+        return True
+    return False
+
+def cek_nik_tidak_valid(d_dev):
+    """
+    Melakukan scan halaman untuk mengonfirmasi apakah ada pesan 'NIK tidak valid' di layar.
+    Returns:
+        tuple (is_invalid: bool, pesan_error: str)
+    """
+    invalid_keywords = [
+        "NIK tidak valid",
+        "periksa digit",
+        "digit pertama",
+        "digit ketiga",
+        "digit ke-7"
+    ]
+    try:
+        for kw in invalid_keywords:
+            if check_exists(d_dev(textContains=kw)) or check_exists(d_dev(descriptionContains=kw)):
+                txt = d_dev(textContains=kw).info.get('text', '') if check_exists(d_dev(textContains=kw)) else kw
+                return True, txt
+        
+        xp = "//*[contains(@text, 'NIK tidak valid') or contains(@content-desc, 'NIK tidak valid') or contains(@text, 'periksa digit')]"
+        if check_exists(d_dev.xpath(xp)):
+            nodes = d_dev.xpath(xp).all()
+            if nodes:
+                txt = nodes[0].text if hasattr(nodes[0], 'text') and nodes[0].text else "NIK tidak valid"
+                return True, txt
+    except Exception as e:
+        print(f"[SCAN NIK] Exception saat memindai NIK tidak valid: {e}")
+
+    return False, ""
 
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
@@ -1402,6 +1467,10 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         if not info_alamat[key]:
             info_alamat[key] = f"{key}: (tidak ditemukan)"
 
+    # Normalisasi nama Desa/Kelurahan jika ada variasi Padang Sambian
+    if info_alamat.get("Desa/Kelurahan"):
+        info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
+
     # Validasi jika data alamat server kosong / hanya kurung siku "[]"
     alamat_kosong = False
     if d(text="[]").exists() or d(text="[ ]").exists():
@@ -1416,9 +1485,6 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
 
     if alamat_kosong:
         print(f"[BLOK I] Data alamat server kosong (berisi '[]') untuk IDPEL {idpel}.")
-
-    if info_alamat.get("Desa/Kelurahan"):
-        info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
 
     # Simpan ke file file_output (temp_alamat.txt)
     try:
@@ -1694,7 +1760,7 @@ def isi_blok_iii(alamat_val=""):
     provinsi = alamat_data["Provinsi"]
     kabupaten = alamat_data["Kabupaten"]
     kecamatan = alamat_data["Kecamatan"]
-    desa = normalisasi_nama_desa(alamat_data["Desa/Kelurahan"])
+    desa = alamat_data["Desa/Kelurahan"]
     if not alamat_val:
         alamat_val = alamat_data.get("Alamat", "")
 
@@ -2070,6 +2136,12 @@ def proses_update_reject_nik():
         nama = item["nama"]
         row = item["row"]
 
+        # Validasi NAMA: Harus alphabet saja (a-z A-Z dan spasi). Skip jika mengandung karakter selain alphabet.
+        if not nama or not all(c.isalpha() or c.isspace() for c in nama):
+            print(f"[SKIP] Baris {row} | IDPEL {idpel} dilewati karena NAMA '{nama}' mengandung karakter selain alphabet a-z A-Z.")
+            simpan_status_excel(row, "Error : nama tidak murni alphabeth")
+            continue
+
         # Loop percobaan pengulangan untuk baris IDPEL yang sama (maksimal 3x)
         sukses_baris = False
         for row_attempt in range(1, 4):
@@ -2237,30 +2309,49 @@ def proses_update_reject_nik():
             pilih_blok("II")
             time.sleep(SLEEP_LONG)
 
-            input_textbox(label_text="201. Nama penghuni", value=nama, bounds_fallback=None, exact=False, sleep_after=SLEEP_LONG)
-            
-            max_nik_attempts = 3
+            # Pengisian '201. Nama penghuni' dengan verifikasi scan halaman
+            max_nama_attempts = 5
+            nama_terisi_sukses = False
+            for nama_attempt in range(1, max_nama_attempts + 1):
+                print(f"[INPUT NAMA] Memasukkan '201. Nama penghuni': '{nama}' (Percobaan {nama_attempt}/{max_nama_attempts})...")
+                input_textbox(label_text="201. Nama penghuni", value=nama, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+                time.sleep(0.5)
+
+                if verifikasi_nama_penghuni_terisi(d, nama_expected=nama):
+                    print(f"[SCAN NAMA] [SUKSES] Field '201. Nama penghuni' terisi dengan sukses pada percobaan ke-{nama_attempt}.")
+                    nama_terisi_sukses = True
+                    break
+                else:
+                    print(f"[SCAN NAMA] [GAGAL] Field '201. Nama penghuni' belum terisi (percobaan ke-{nama_attempt}/{max_nama_attempts}). Mengulangi pengisian...")
+                    time.sleep(0.5)
+
+            if not nama_terisi_sukses:
+                print(f"[SCAN NAMA] [ERROR] Field '201. Nama penghuni' tetap gagal terisi setelah {max_nama_attempts}x percobaan.")
+
+            # Pengisian '202. NIK penghuni' dan 'Cek NIK' dengan verifikasi scan halaman untuk 'NIK tidak valid'
+            max_nik_attempts = 5
+            nik_sukses = False
             for nik_attempt in range(1, max_nik_attempts + 1):
-                input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_LONG)
+                print(f"[INPUT NIK] Memasukkan '202. NIK penghuni': '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})...")
+                input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+                time.sleep(0.5)
+                print(f"[KLIK] Mengetuk 'Cek NIK' (Percobaan {nik_attempt}/{max_nik_attempts})...")
                 ketuk("Cek NIK")
                 time.sleep(SLEEP_LONG)
 
-                # Cek jika terdeteksi teks 'NIK tidak valid'
-                is_nik_invalid = False
-                try:
-                    if (check_exists(d(textContains="NIK tidak valid")) or 
-                        check_exists(d(descriptionContains="NIK tidak valid")) or
-                        check_exists(d.xpath("//*[contains(@text, 'NIK tidak valid') or contains(@content-desc, 'NIK tidak valid')]"))):
-                        is_nik_invalid = True
-                except Exception:
-                    pass
-
+                is_nik_invalid, msg_error = cek_nik_tidak_valid(d)
                 if is_nik_invalid:
-                    print(f"[RETRY NIK] Terdeteksi 'NIK tidak valid' (percobaan ke-{nik_attempt}/{max_nik_attempts}). Mengulangi input_textbox NIK...")
-                    time.sleep(SLEEP_LONG)
+                    print(f"[SCAN NIK] [RETRY NIK] Terdeteksi '{msg_error}' (percobaan ke-{nik_attempt}/{max_nik_attempts}). Mengulangi pengisian NIK & ketuk Cek NIK...")
+                    time.sleep(SLEEP_SHORT)
                 else:
-                    print(f"[NIK] NIK '{nik}' berhasil dicek pada percobaan ke-{nik_attempt}.")
+                    print(f"[SCAN NIK] [SUKSES] NIK '{nik}' berhasil dicek (tidak ada pesan NIK tidak valid) pada percobaan ke-{nik_attempt}.")
+                    nik_sukses = True
                     break
+
+            if not nik_sukses:
+                print(f"[SCAN NIK] [GAGAL] NIK '{nik}' tetap 'NIK tidak valid' setelah {max_nik_attempts}x percobaan. Menyimpan status Excel & melewatkan baris ini...")
+                simpan_status_excel(row, "Error : Nik tidak valid")
+                raise Exception(f"Error : Nik tidak valid untuk IDPEL {idpel}")
 
             loop_swipe_dinamis(delta_y=-700, target_text="204. Status kepemilikan")
             input_textbox(label_text="203. Nomor telepon", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
