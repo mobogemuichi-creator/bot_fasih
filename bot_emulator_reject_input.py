@@ -272,6 +272,62 @@ def tunggu_loading_screen(target_text=None, timeout=30):
     return tunggu_loading(target_text=target_text, timeout=timeout)
 
 
+def tunggu_loading_cek_nik(timeout=30, sleep_before=0.3):
+    """
+    Fungsi khusus untuk menunggu loading screen / progress bar setelah mengetuk 'Cek NIK':
+    - Menunggu progress bar (card_progress / ProgressBar) muncul & hilang dari layar
+    - Polling hingga salah satu indikator hasil ('Hasil Pemadanan NIK', 'NIK tidak valid', dll) terdeteksi di layar.
+    """
+    t_start = time.time()
+    waktu_str = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    print(f"[{waktu_str}] [LOADING CEK NIK] Menunggu proses 'Cek NIK' / loading screen selesai...")
+
+    if sleep_before > 0:
+        time.sleep(sleep_before)
+
+    # 1. Tunggu progress bar (card_progress atau ProgressBar) hilang dari layar
+    try:
+        if check_exists(d(resourceId="id.go.bpsfasih:id/card_progress")):
+            d(resourceId="id.go.bpsfasih:id/card_progress").wait_gone(timeout=timeout)
+        elif check_exists(d(className="android.widget.ProgressBar")):
+            d(className="android.widget.ProgressBar").wait_gone(timeout=timeout)
+    except Exception:
+        pass
+
+    # 2. Active polling hingga salah satu indikator selesai muncul di layar
+    indikator_selesai = [
+        "Hasil Pemadanan NIK",
+        "NIK tidak valid",
+        "periksa digit",
+        "DITEMUKAN",
+        "TIDAK DITEMUKAN",
+        "NIK :"
+    ]
+    t_end = time.time() + timeout
+    found = False
+    while time.time() < t_end:
+        try:
+            for item in indikator_selesai:
+                if (check_exists(d(textContains=item)) or 
+                    check_exists(d(descriptionContains=item)) or
+                    check_exists(d.xpath(f"//*[contains(@text, '{item}') or contains(@content-desc, '{item}')]"))):
+                    found = True
+                    break
+            if found:
+                break
+        except Exception:
+            pass
+        time.sleep(0.2)
+
+    durasi = time.time() - t_start
+    waktu_selesai = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    if found:
+        print(f"[{waktu_selesai}] [SUKSES CEK NIK] Loading 'Cek NIK' selesai (+{durasi:.2f}s).")
+    else:
+        print(f"[{waktu_selesai}] [LOADING CEK NIK] Selesai menunggu (+{durasi:.2f}s).")
+    return found
+
+
 def is_textbox_disabled(label_text="202. NIK penghuni"):
     """
     Mengecek apakah form/textbox '202. NIK penghuni' terkunci / sudah disubmit dari awal (Referensi dump.xml L165-L175):
@@ -2337,7 +2393,7 @@ def proses_update_reject_nik():
                 time.sleep(0.5)
                 print(f"[KLIK] Mengetuk 'Cek NIK' (Percobaan {nik_attempt}/{max_nik_attempts})...")
                 ketuk("Cek NIK")
-                time.sleep(SLEEP_LONG)
+                tunggu_loading_cek_nik(timeout=30, sleep_before=0.3)
 
                 is_nik_invalid, msg_error = cek_nik_tidak_valid(d)
                 if is_nik_invalid:
