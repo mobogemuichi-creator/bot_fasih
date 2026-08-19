@@ -2280,16 +2280,17 @@ def proses_update_reject_nik():
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
 
-            # Cek jika data alamat mengandung kata 'null' (case-insensitive) atau '[]'
+            # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
             is_alamat_null = False
             for k, v in (alamat_dict or {}).items():
                 v_str = str(v)
-                if "null" in v_str.lower() or "[]" in v_str:
+                v_str_lower = v_str.lower()
+                if "null" in v_str_lower or "[]" in v_str or "tidak ditemukan" in v_str_lower:
                     is_alamat_null = True
-                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' / 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
 
             if is_alamat_null:
-                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} mengandung kata 'null' / '[]'. Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
+                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]' / 'tidak ditemukan'). Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error: Alamat NULL")
                 kembali_ke_daftar_assignment()
                 sukses_baris = True
