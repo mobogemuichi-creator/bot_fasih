@@ -1352,9 +1352,10 @@ def normalisasi_nama_desa(val):
             val = val.replace(old_str, new_str)
     return val
 
-def verifikasi_nama_penghuni_terisi(d_dev, nama_expected=""):
+def verifikasi_nama_penghuni_terisi(d_dev):
     """
-    Melakukan scan halaman untuk memverifikasi apakah '201. Nama penghuni' sudah terisi (tidak kosong / bukan 'Wajib diisi').
+    Melakukan scan halaman untuk memverifikasi apakah '201. Nama penghuni' sudah terisi di UI
+    (tidak kosong / bukan 'Wajib diisi'), tanpa mengecek/mencocokkan dengan data nama dari Excel.
     """
     val_existing = ""
     try:
@@ -2387,18 +2388,24 @@ def proses_update_reject_nik():
             # Pengisian '201. Nama penghuni' dengan verifikasi scan halaman
             max_nama_attempts = 5
             nama_terisi_sukses = False
-            for nama_attempt in range(1, max_nama_attempts + 1):
-                print(f"[INPUT NAMA] Memasukkan '201. Nama penghuni': '{nama}' (Percobaan {nama_attempt}/{max_nama_attempts})...")
-                input_textbox(label_text="201. Nama penghuni", value=nama, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
-                time.sleep(0.5)
 
-                if verifikasi_nama_penghuni_terisi(d, nama_expected=nama):
-                    print(f"[SCAN NAMA] [SUKSES] Field '201. Nama penghuni' terisi dengan sukses pada percobaan ke-{nama_attempt}.")
-                    nama_terisi_sukses = True
-                    break
-                else:
-                    print(f"[SCAN NAMA] [GAGAL] Field '201. Nama penghuni' belum terisi (percobaan ke-{nama_attempt}/{max_nama_attempts}). Mengulangi pengisian...")
+            # Cek terlebih dahulu apakah '201. Nama penghuni' sudah terisi di UI
+            if verifikasi_nama_penghuni_terisi(d):
+                print(f"[SCAN NAMA] [SUKSES] Field '201. Nama penghuni' sudah terisi di UI. Mengabaikan pengetikan ulang.")
+                nama_terisi_sukses = True
+            else:
+                for nama_attempt in range(1, max_nama_attempts + 1):
+                    print(f"[INPUT NAMA] Memasukkan '201. Nama penghuni': '{nama}' (Percobaan {nama_attempt}/{max_nama_attempts})...")
+                    input_textbox(label_text="201. Nama penghuni", value=nama, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
                     time.sleep(0.5)
+
+                    if verifikasi_nama_penghuni_terisi(d):
+                        print(f"[SCAN NAMA] [SUKSES] Field '201. Nama penghuni' terisi dengan sukses pada percobaan ke-{nama_attempt}.")
+                        nama_terisi_sukses = True
+                        break
+                    else:
+                        print(f"[SCAN NAMA] [GAGAL] Field '201. Nama penghuni' belum terisi (percobaan ke-{nama_attempt}/{max_nama_attempts}). Mengulangi pengisian...")
+                        time.sleep(0.5)
 
             if not nama_terisi_sukses:
                 print(f"[SCAN NAMA] [ERROR] Field '201. Nama penghuni' tetap gagal terisi setelah {max_nama_attempts}x percobaan.")

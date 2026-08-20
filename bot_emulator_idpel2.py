@@ -1630,61 +1630,76 @@ def main():
             # 2. Mengisi "201. Nama penghuni" dan verifikasi pengisian (max 3x percobaan)
             print("[BLOK II] Mengisi '201. Nama penghuni'...")
             nama_terisi = False
-            for try_nama in range(1, 4):
-                try:
-                    # Pastikan label 201 terlihat di layar
-                    label_201 = d(textContains="201. Nama penghuni")
-                    if not label_201.exists():
-                        label_201 = d(textContains="201.")
-                    if not label_201.exists():
-                        try:
-                            d(scrollable=True).scroll.to(textContains="201.")
-                        except Exception:
-                            pass
 
-                    # Target spesifik EditText 201 berdasarkan hirarki dump.xml
-                    target_input = None
-                    xp_input = d.xpath("//*[contains(@text, '201.')]/following::android.widget.EditText[1]")
-                    if xp_input.exists:
-                        target_input = xp_input
-                    elif label_201.exists():
-                        target_input = label_201.down(className="android.widget.EditText")
-                    else:
-                        target_input = d(className="android.widget.EditText")
+            # Cek terlebih dahulu apakah '201. Nama penghuni' sudah terisi di UI
+            val_existing_201 = ""
+            try:
+                xp_check = d.xpath("//*[contains(@text, '201.')]/following::android.widget.EditText[1]")
+                if xp_check.exists:
+                    val_existing_201 = (xp_check.info.get('text', '') or "").strip()
+                elif d(textContains="201. Nama penghuni").exists():
+                    val_existing_201 = (d(textContains="201. Nama penghuni").down(className="android.widget.EditText").get_text() or "").strip()
+            except Exception:
+                pass
 
-                    if target_input:
-                        try:
-                            if hasattr(target_input, 'click'):
-                                target_input.click()
-                            time.sleep(SLEEP_SHORT)
-                        except Exception:
-                            pass
-
-                        target_input.set_text(str(nama_penghuni))
-                        time.sleep(SLEEP_SHORT)
-                        
-                        # Scan / Verifikasi apakah teks Nama Penghuni sudah berhasil terisi
-                        if d(textContains=str(nama_penghuni)).exists():
-                            print(f"[BLOK II] Berhasil mengisi & memverifikasi Nama Penghuni: '{nama_penghuni}' (Percobaan {try_nama}/3)")
-                            nama_terisi = True
-                            break
-                        else:
-                            val_check = ""
+            if val_existing_201 and val_existing_201.lower() not in ["wajib diisi", "pilih salah satu...", ""]:
+                print(f"[BLOK II] Field '201. Nama penghuni' sudah terisi di UI: '{val_existing_201}'. Mengabaikan pengetikan ulang.")
+                nama_terisi = True
+            else:
+                for try_nama in range(1, 4):
+                    try:
+                        # Pastikan label 201 terlihat di layar
+                        label_201 = d(textContains="201. Nama penghuni")
+                        if not label_201.exists():
+                            label_201 = d(textContains="201.")
+                        if not label_201.exists():
                             try:
-                                val_check = d(className="android.widget.EditText").get_text() or ""
+                                d(scrollable=True).scroll.to(textContains="201.")
                             except Exception:
                                 pass
-                            if str(nama_penghuni).strip() in val_check:
-                                print(f"[BLOK II] Berhasil mengisi & memverifikasi Nama Penghuni: '{nama_penghuni}' (Percobaan {try_nama}/3)")
+
+                        # Target spesifik EditText 201 berdasarkan hirarki dump.xml
+                        target_input = None
+                        xp_input = d.xpath("//*[contains(@text, '201.')]/following::android.widget.EditText[1]")
+                        if xp_input.exists:
+                            target_input = xp_input
+                        elif label_201.exists():
+                            target_input = label_201.down(className="android.widget.EditText")
+                        else:
+                            target_input = d(className="android.widget.EditText")
+
+                        if target_input:
+                            try:
+                                if hasattr(target_input, 'click'):
+                                    target_input.click()
+                                time.sleep(SLEEP_SHORT)
+                            except Exception:
+                                pass
+
+                            target_input.set_text(str(nama_penghuni))
+                            time.sleep(SLEEP_SHORT)
+                            
+                            # Scan / Verifikasi apakah field Nama Penghuni sudah berhasil terisi di UI
+                            val_check = ""
+                            try:
+                                if hasattr(target_input, 'get_text'):
+                                    val_check = (target_input.get_text() or "").strip()
+                                else:
+                                    val_check = (d(className="android.widget.EditText").get_text() or "").strip()
+                            except Exception:
+                                pass
+
+                            if val_check and val_check.lower() not in ["wajib diisi", "pilih salah satu...", ""]:
+                                print(f"[BLOK II] Berhasil mengisi & memverifikasi Nama Penghuni di UI: '{val_check}' (Percobaan {try_nama}/3)")
                                 nama_terisi = True
                                 break
                             else:
                                 print(f"[WARNING] Teks Nama Penghuni belum terinput pada percobaan {try_nama}/3. Mengulang pengisian...")
-                    else:
-                        print(f"[WARNING] Input text box '201. Nama penghuni' tidak ditemukan pada percobaan {try_nama}/3.")
-                except Exception as err_input:
-                    print(f"[WARNING] Gagal input Nama Penghuni pada percobaan {try_nama}/3: {err_input}")
-                time.sleep(SLEEP_SHORT)
+                        else:
+                            print(f"[WARNING] Input text box '201. Nama penghuni' tidak ditemukan pada percobaan {try_nama}/3.")
+                    except Exception as err_input:
+                        print(f"[WARNING] Gagal input Nama Penghuni pada percobaan {try_nama}/3: {err_input}")
+                    time.sleep(SLEEP_SHORT)
 
             if not nama_terisi:
                 raise Exception(f"Gagal mengisi Nama Penghuni '{nama_penghuni}' setelah 3 kali percobaan.")
