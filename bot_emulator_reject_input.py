@@ -117,12 +117,13 @@ def baca_data_reject(file_path=EXCEL_FILE):
             no_telp_val = row[no_telp_idx] if (no_telp_idx != -1 and no_telp_idx < len(row)) else None
             status_val = row[status_idx] if (status_idx != -1 and status_idx < len(row)) else None
 
-            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', atau 'ERROR'
+            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', atau 'ERROR' (kecuali 'ALAMAT TIDAK DITEMUKAN')
             if status_val is not None:
                 status_str = str(status_val).strip().upper()
-                if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR"]):
-                    skipped_count += 1
-                    continue
+                if "ALAMAT TIDAK DITEMUKAN" not in status_str:
+                    if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR"]):
+                        skipped_count += 1
+                        continue
 
             if idpel_val is not None:
                 idpel_str = str(idpel_val).strip()
@@ -2282,15 +2283,26 @@ def proses_update_reject_nik():
 
             # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
             is_alamat_null = False
+            is_tidak_ditemukan = False
             for k, v in (alamat_dict or {}).items():
                 v_str = str(v)
                 v_str_lower = v_str.lower()
-                if "null" in v_str_lower or "[]" in v_str or "tidak ditemukan" in v_str_lower:
+                if "tidak ditemukan" in v_str_lower:
+                    is_tidak_ditemukan = True
+                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+                elif "null" in v_str_lower or "[]" in v_str:
                     is_alamat_null = True
-                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' / 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+                    print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+
+            if is_tidak_ditemukan:
+                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} terdeteksi 'tidak ditemukan'. Menyimpan status 'Error : Alamat tidak ditemukan' & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error : Alamat tidak ditemukan")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
 
             if is_alamat_null:
-                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]' / 'tidak ditemukan'). Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
+                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]'). Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error: Alamat NULL")
                 kembali_ke_daftar_assignment()
                 sukses_baris = True

@@ -1098,18 +1098,26 @@ def main():
                 
                 # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
                 is_alamat_null = False
+                is_tidak_ditemukan = False
                 if d(text="[]").exists() or d(text="[ ]").exists():
                     is_alamat_null = True
 
                 for k, v in (info_alamat or {}).items():
                     v_str = str(v)
                     v_str_lower = v_str.lower()
-                    if "null" in v_str_lower or "[]" in v_str or "tidak ditemukan" in v_str_lower:
+                    if "tidak ditemukan" in v_str_lower:
+                        is_tidak_ditemukan = True
+                        print(f"[BLOK I] [WARNING] Terdeteksi kata 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+                    elif "null" in v_str_lower or "[]" in v_str:
                         is_alamat_null = True
-                        print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' / 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+                        print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+
+                if is_tidak_ditemukan:
+                    print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} terdeteksi 'tidak ditemukan'. Menyimpan status 'Error : Alamat tidak ditemukan' & berpindah ke baris berikutnya...")
+                    raise Exception("Error : Alamat tidak ditemukan")
 
                 if is_alamat_null:
-                    print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]' / 'tidak ditemukan'). Menyimpan status 'Error : data alamat server kosong' & berpindah ke baris berikutnya...")
+                    print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]'). Menyimpan status 'Error : data alamat server kosong' & berpindah ke baris berikutnya...")
                     raise Exception("Error : data alamat server kosong")
                 
                 # Simpan ke file temp_alamat.txt
