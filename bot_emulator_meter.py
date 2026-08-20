@@ -706,7 +706,7 @@ def main():
             continue
 
         # Lewati jika baris ini sudah berstatus SUKSES atau error tertentu
-        if status_exist in ["SUKSES", "Error : SUDAH TERCATAT PADA SISTEM FASIH", "Error : Nik tidak valid", "Error : data alamat server kosong", "Error : Nomor meter tidak ditemukan", "Error : nama tidak murni alphabeth"]:
+        if status_exist in ["SUKSES", "Error : SUDAH TERCATAT PADA SISTEM FASIH", "Error : Nik tidak valid", "Error : data alamat server kosong", "Error: Alamat NULL", "Error : Alamat NULL", "Error : Nomor meter tidak ditemukan", "Error : nama tidak murni alphabeth"]:
             print(f"[SKIP] Baris {row} | IDPEL {idpel} sudah diproses sebelumnya ({status_exist}).")
             continue
 
@@ -1087,20 +1087,20 @@ def main():
                 if info_alamat.get("Desa/Kelurahan"):
                     info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
                 
-                # Validasi jika data alamat server kosong / hanya kurung siku "[]"
-                alamat_kosong = False
+                # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
+                is_alamat_null = False
                 if d(text="[]").exists() or d(text="[ ]").exists():
-                    alamat_kosong = True
-                else:
-                    nilai_bersih = []
-                    for k, v in info_alamat.items():
-                        clean_v = v.split(":", 1)[1].strip() if ":" in v else v.strip()
-                        nilai_bersih.append(clean_v)
-                    if any(v in ["[]", "[ ]"] for v in nilai_bersih) or all(v in ["", "[]", "[ ]", "(tidak ditemukan)"] for v in nilai_bersih):
-                        alamat_kosong = True
+                    is_alamat_null = True
 
-                if alamat_kosong:
-                    print(f"[BLOK I] Data alamat server kosong (berisi '[]') untuk IDPEL {idpel}. Men-skip ke baris berikutnya...")
+                for k, v in (info_alamat or {}).items():
+                    v_str = str(v)
+                    v_str_lower = v_str.lower()
+                    if "null" in v_str_lower or "[]" in v_str or "tidak ditemukan" in v_str_lower:
+                        is_alamat_null = True
+                        print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' / 'tidak ditemukan' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
+
+                if is_alamat_null:
+                    print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]' / 'tidak ditemukan'). Menyimpan status 'Error : data alamat server kosong' & berpindah ke baris berikutnya...")
                     raise Exception("Error : data alamat server kosong")
                 
                 # Simpan ke file temp_alamat.txt
