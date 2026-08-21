@@ -1454,6 +1454,35 @@ def cari_dan_scroll_ke_tombol_cek_nik(max_swipes=10):
     return False
 
 
+def baca_nilai_field_nik(d_dev):
+    """
+    Membaca nilai yang sedang terisi di field '202. NIK penghuni' pada UI.
+    Returns: string isi field (kosong jika tidak ditemukan/gagal).
+    """
+    val_existing = ""
+    try:
+        label = d_dev(textContains="202. NIK penghuni")
+        if not check_exists(label):
+            label = d_dev(descriptionContains="202. NIK penghuni")
+
+        if check_exists(label):
+            input_el = label.down(className="android.widget.EditText")
+            if not check_exists(input_el):
+                input_el = label.sibling(className="android.widget.EditText")
+            if check_exists(input_el):
+                val_existing = (input_el.get_text() or "").strip()
+
+        if not val_existing:
+            xp = "//*[contains(@text, '202. NIK penghuni') or contains(@content-desc, '202. NIK penghuni')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                val_existing = (d_dev.xpath(xp).info.get('text', '') or "").strip()
+    except Exception as e:
+        print(f"[SCAN NIK] Exception saat membaca nilai field NIK: {e}")
+
+    print(f"[SCAN NIK] Nilai field '202. NIK penghuni' di UI: '{val_existing}'")
+    return val_existing
+
+
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
     Fungsi untuk men-scroll dan mengambil data alamat (Provinsi, Kabupaten, Kecamatan, Desa/Kelurahan, Alamat)
@@ -2458,10 +2487,48 @@ def proses_update_reject_nik():
             # Pengisian '202. NIK penghuni' dan 'Cek NIK' dengan verifikasi scan halaman untuk 'NIK tidak valid'
             max_nik_attempts = 5
             nik_sukses = False
+
+            # Cek terlebih dahulu apakah field NIK berisi nilai dummy '9999999999999998'
+            nik_existing = baca_nilai_field_nik(d)
+            if nik_existing == "9999999999999998":
+                print(f"[SCAN NIK] Field '202. NIK penghuni' berisi dummy '9999999999999998'. Akan diganti dengan NIK dari Excel: '{nik}'")
+
             for nik_attempt in range(1, max_nik_attempts + 1):
-                print(f"[INPUT NIK] Memasukkan '202. NIK penghuni': '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})...")
-                input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
-                time.sleep(0.5)
+                # Baca nilai field NIK saat ini (kecuali percobaan pertama yang sudah dibaca di atas)
+                if nik_attempt > 1:
+                    nik_existing = baca_nilai_field_nik(d)
+
+                # Tentukan apakah perlu mengisi ulang NIK:
+                # - Jika field berisi dummy '9999999999999998'
+                # - Jika field kosong
+                # - Jika field berbeda dengan NIK dari Excel
+                perlu_isi = False
+                if not nik_existing:
+                    print(f"[SCAN NIK] Field NIK kosong. Perlu diisi dengan NIK dari Excel: '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})")
+                    perlu_isi = True
+                elif nik_existing == "9999999999999998":
+                    print(f"[SCAN NIK] Field NIK masih berisi dummy '9999999999999998'. Perlu diganti dengan NIK dari Excel: '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})")
+                    perlu_isi = True
+                elif nik_existing != nik:
+                    print(f"[SCAN NIK] Field NIK berisi '{nik_existing}' (berbeda dengan NIK Excel '{nik}'). Perlu diisi ulang (Percobaan {nik_attempt}/{max_nik_attempts})")
+                    perlu_isi = True
+                else:
+                    print(f"[SCAN NIK] Field NIK sudah berisi '{nik_existing}' sesuai dengan NIK Excel. Lanjut ke Cek NIK.")
+
+                if perlu_isi:
+                    print(f"[INPUT NIK] Memasukkan '202. NIK penghuni': '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})...")
+                    input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+                    time.sleep(0.5)
+
+                    # Verifikasi setelah pengisian: baca ulang field NIK
+                    nik_setelah_isi = baca_nilai_field_nik(d)
+                    if not nik_setelah_isi or nik_setelah_isi != nik:
+                        print(f"[SCAN NIK] [VERIFIKASI GAGAL] Setelah pengisian, field NIK berisi '{nik_setelah_isi}' (seharusnya '{nik}'). Mengulangi pengisian...")
+                        time.sleep(0.5)
+                        continue  # Ulangi loop tanpa menekan Cek NIK
+                    else:
+                        print(f"[SCAN NIK] [VERIFIKASI OK] Field NIK berisi '{nik_setelah_isi}' sesuai dengan NIK Excel.")
+
                 # Cari terlebih dahulu tombol "Cek NIK" sebelum mengetuknya (swipe max 10x jika belum ketemu)
                 cari_dan_scroll_ke_tombol_cek_nik(max_swipes=10)
                 print(f"[KLIK] Mengetuk 'Cek NIK' (Percobaan {nik_attempt}/{max_nik_attempts})...")
