@@ -2184,8 +2184,8 @@ def proses_update_reject_nik():
         nama = item["nama"]
         row = item["row"]
 
-        # Validasi NAMA: Harus alphabet saja (a-z A-Z dan spasi). Skip jika mengandung karakter selain alphabet.
-        if not nama or not all(c.isalpha() or c.isspace() for c in nama):
+        # Validasi NAMA: Harus alphabet saja (a-z A-Z dan spasi) jika NAMA tidak kosong. Skip jika mengandung karakter selain alphabet.
+        if nama and not all(c.isalpha() or c.isspace() for c in nama):
             print(f"[SKIP] Baris {row} | IDPEL {idpel} dilewati karena NAMA '{nama}' mengandung karakter selain alphabet a-z A-Z.")
             simpan_status_excel(row, "Error : nama tidak murni alphabeth")
             continue
@@ -2392,6 +2392,9 @@ def proses_update_reject_nik():
             # Cek terlebih dahulu apakah '201. Nama penghuni' sudah terisi di UI
             if verifikasi_nama_penghuni_terisi(d):
                 print(f"[SCAN NAMA] [SUKSES] Field '201. Nama penghuni' sudah terisi di UI. Mengabaikan pengetikan ulang.")
+                nama_terisi_sukses = True
+            elif not nama:
+                print(f"[SCAN NAMA] Kolom NAMA di Excel kosong, melanjutkan proses tanpa mengisi field NAMA.")
                 nama_terisi_sukses = True
             else:
                 for nama_attempt in range(1, max_nama_attempts + 1):
