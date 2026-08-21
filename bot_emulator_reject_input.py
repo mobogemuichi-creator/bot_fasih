@@ -2349,6 +2349,18 @@ def proses_update_reject_nik():
             #7 ketuk tombol 'YA'
             ketuk("YA", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
+
+            # Cek jika muncul text/dialog "Perhatian"
+            if check_exists(d(text="Perhatian")) or check_exists(d(textContains="Perhatian")) or check_exists(d(resourceId="id.go.bpsfasih:id/judul_bottomDialog")):
+                print("[DIALOG] Terdeteksi text/dialog 'Perhatian'. Mengetuk 'DOWNLOAD SEKARANG'...")
+                if check_exists(d(resourceId="id.go.bpsfasih:id/rButton_bottomDialog")):
+                    d(resourceId="id.go.bpsfasih:id/rButton_bottomDialog").click()
+                else:
+                    ketuk("DOWNLOAD SEKARANG", sleep_after=SLEEP_SHORT)
+                print("[LOADING] Menunggu proses download / loading selesai...")
+                tunggu_loading(timeout=30)
+                time.sleep(SLEEP_SHORT)
+
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
