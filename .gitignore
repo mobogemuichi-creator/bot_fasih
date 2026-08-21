@@ -24,6 +24,7 @@
 !konfigurasi.py
 !cek_idpel_1.py
 !cek_nometer_1.py
+!scan_page.py
 
 # Whitelist gitignore
 !.gitignore

@@ -1412,6 +1412,48 @@ def cek_nik_tidak_valid(d_dev):
 
     return False, ""
 
+
+def cari_dan_scroll_ke_tombol_cek_nik(max_swipes=10):
+    """
+    Mencari terlebih dahulu tombol 'Cek NIK' sebelum mengetuknya.
+    Jika belum ketemu, melakukan loop_swipe_statis(delta_y=-200, loop=1)
+    dan mengulangi maksimal 10 kali sampai ketemu.
+    """
+    for attempt in range(1, max_swipes + 1):
+        found = False
+        try:
+            btn_el = d(className="android.widget.Button", text="Cek NIK")
+            if not check_exists(btn_el):
+                btn_el = d(className="android.widget.Button", textContains="Cek NIK")
+            if not check_exists(btn_el):
+                btn_el = d(text="Cek NIK")
+            if not check_exists(btn_el):
+                btn_el = d(textContains="Cek NIK")
+            if not check_exists(btn_el):
+                btn_el = d(description="Cek NIK")
+            if not check_exists(btn_el):
+                btn_el = d(descriptionContains="Cek NIK")
+            if not check_exists(btn_el):
+                xp = "//*[contains(@text, 'Cek NIK') or contains(@content-desc, 'Cek NIK')]"
+                btn_el = d.xpath(xp)
+
+            if check_exists(btn_el):
+                found = True
+        except Exception as e:
+            print(f"[CEK NIK] Exception saat mencari tombol 'Cek NIK': {e}")
+
+        if found:
+            print(f"[CEK NIK] Tombol 'Cek NIK' ditemukan di layar (Pencarian ke-{attempt}).")
+            return True
+
+        print(f"[CEK NIK] Tombol 'Cek NIK' belum ditemukan (Pencarian ke-{attempt}/{max_swipes}). Melakukan swipe ke bawah...")
+        loop_swipe_statis(delta_y=-200, loop=1)
+        time.sleep(0.5)
+
+    print(f"[CEK NIK] Tombol 'Cek NIK' tidak ditemukan setelah {max_swipes}x swipe.")
+    return False
+
+
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
     Fungsi untuk men-scroll dan mengambil data alamat (Provinsi, Kabupaten, Kecamatan, Desa/Kelurahan, Alamat)
@@ -2420,6 +2462,8 @@ def proses_update_reject_nik():
                 print(f"[INPUT NIK] Memasukkan '202. NIK penghuni': '{nik}' (Percobaan {nik_attempt}/{max_nik_attempts})...")
                 input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
                 time.sleep(0.5)
+                # Cari terlebih dahulu tombol "Cek NIK" sebelum mengetuknya (swipe max 10x jika belum ketemu)
+                cari_dan_scroll_ke_tombol_cek_nik(max_swipes=10)
                 print(f"[KLIK] Mengetuk 'Cek NIK' (Percobaan {nik_attempt}/{max_nik_attempts})...")
                 ketuk("Cek NIK")
                 tunggu_loading_cek_nik(timeout=30, sleep_before=0.3)
