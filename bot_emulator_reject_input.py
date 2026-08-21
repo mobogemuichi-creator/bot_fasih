@@ -2361,6 +2361,15 @@ def proses_update_reject_nik():
                 tunggu_loading(timeout=30)
                 time.sleep(SLEEP_SHORT)
 
+                # Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai
+                print("[RETRY] Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai...")
+                ketuk("Aksi", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_MEDIUM)
+                ketuk("BUKA", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_MEDIUM)
+                ketuk("YA", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
