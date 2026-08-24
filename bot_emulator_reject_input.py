@@ -2696,21 +2696,19 @@ def proses_update_reject_nik():
             #Catatan
             input_textbox(label_text="Catatan", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
 
-            #18 ketuk tombol "Kirim"
+            #18 ketuk tombol "Kirim" pertama
             ketuk("Kirim", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
 
-            #19 ketuk tombol "YA"
-            ketuk("YA", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
+            #19 ketuk tombol "YA" (jika muncul konfirmasi YA)
+            if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
+                ketuk("YA", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
 
-            #20 ketuk tombol "Kirim"
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            # Cek apakah setelah ketuk 'Kirim' muncul 'GALAT 0' (validasi error = 0)
+            # Cek apakah modal ringkasan validasi menampilkan 'GALAT 0' (validasi error = 0)
             is_galat_0 = False
-            for galat_attempt in range(10):
+            print("[SUBMIT] Memeriksa status 'GALAT 0' pada modal ringkasan validasi...")
+            for galat_attempt in range(15):
                 if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
                     check_exists(d(textContains="GALAT 0")) or 
                     check_exists(d(descriptionContains="GALAT 0")) or 
@@ -2726,7 +2724,12 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            #21 ketuk tombol "Kirim"
+            print("[SUBMIT] [SUKSES] Terdeteksi 'GALAT 0'! Mengetuk tombol 'Kirim' kedua...")
+            #20 ketuk tombol "Kirim" kedua di dalam modal
+            ketuk("Kirim", sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
+
+            #21 ketuk tombol "Konfirmasi"
             ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
 
