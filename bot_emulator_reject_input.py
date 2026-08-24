@@ -117,11 +117,11 @@ def baca_data_reject(file_path=EXCEL_FILE):
             no_telp_val = row[no_telp_idx] if (no_telp_idx != -1 and no_telp_idx < len(row)) else None
             status_val = row[status_idx] if (status_idx != -1 and status_idx < len(row)) else None
 
-            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', atau 'ERROR' (kecuali 'ALAMAT TIDAK DITEMUKAN')
+            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', 'ERROR', atau 'KOORDINAT & FOTO TIDAK ADA' (kecuali 'ALAMAT TIDAK DITEMUKAN')
             if status_val is not None:
                 status_str = str(status_val).strip().upper()
                 if "ALAMAT TIDAK DITEMUKAN" not in status_str:
-                    if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR"]):
+                    if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR", "KOORDINAT & FOTO TIDAK ADA", "KOORDINAT"]):
                         skipped_count += 1
                         continue
 
@@ -2699,6 +2699,24 @@ def proses_update_reject_nik():
             #20 ketuk tombol "Kirim"
             ketuk("Kirim", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
+
+            # Cek apakah setelah ketuk 'Kirim' muncul 'GALAT 0' (validasi error = 0)
+            is_galat_0 = False
+            for galat_attempt in range(10):
+                if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
+                    check_exists(d(textContains="GALAT 0")) or 
+                    check_exists(d(descriptionContains="GALAT 0")) or 
+                    check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
+                    is_galat_0 = True
+                    break
+                time.sleep(0.3)
+
+            if not is_galat_0:
+                print(f"[SUBMIT] [SKIP] Teks 'GALAT 0' tidak terdeteksi (terdapat error validasi) untuk IDPEL {idpel}. Menyimpan status Excel 'koordinat & foto tidak ada' & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "koordinat & foto tidak ada")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
 
             #21 ketuk tombol "Kirim"
             ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
