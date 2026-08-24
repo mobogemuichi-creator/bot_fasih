@@ -2405,11 +2405,13 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
 
             # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
+            radio_success = False
             if cek_radio_button_tercentang("1. Berhasil didata", exact=False):
                 print("[RADIO CHECK] RadioButton '1. Berhasil didata' sudah tercentang.")
+                radio_success = True
             else:
                 print("[RADIO CHECK] RadioButton '1. Berhasil didata' BELUM tercentang. Memulai pengetukan...")
-                max_radio_attempts = 10
+                max_radio_attempts = 5
                 for r_attempt in range(1, max_radio_attempts + 1):
                     clicked = False
 
@@ -2463,11 +2465,19 @@ def proses_update_reject_nik():
                     time.sleep(0.2)
                     if cek_radio_button_tercentang("1. Berhasil didata", exact=True):
                         print(f"[RADIO SUCCESS] Berhasil memverifikasi '1. Berhasil didata' tercentang pada percobaan ke-{r_attempt}.")
+                        radio_success = True
                         break
                     print(f"[RETRY RADIO] '1. Berhasil didata' belum tercentang (percobaan ke-{r_attempt}/{max_radio_attempts}). Mengulangi...")
                     time.sleep(SLEEP_SHORT)
                     loop_swipe_statis(delta_y=-200, loop=1)
                     time.sleep(SLEEP_SHORT)
+
+            if not radio_success:
+                print(f"[RADIO CHECK] [SKIP] RadioButton '1. Berhasil didata' belum tercentang setelah {max_radio_attempts}x percobaan (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error : RadioButton 1. Berhasil didata tidak tercentang")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
             
             
 
