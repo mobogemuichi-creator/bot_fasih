@@ -2477,6 +2477,23 @@ def proses_update_reject_nik():
             pilih_blok("II")
             time.sleep(SLEEP_LONG)
 
+            # Cek halaman apakah sudah di "Blok II" atau belum
+            is_blok_ii = (
+                check_exists(d(textContains="BLOK II")) or
+                check_exists(d(textContains="Blok II")) or
+                check_exists(d(descriptionContains="BLOK II")) or
+                check_exists(d(descriptionContains="Blok II")) or
+                check_exists(d(textContains="201. Nama penghuni")) or
+                check_exists(d.xpath("//*[contains(@text, 'BLOK II') or contains(@text, 'Blok II') or contains(@content-desc, 'BLOK II') or contains(@content-desc, 'Blok II') or contains(@text, '201. Nama penghuni')]"))
+            )
+
+            if not is_blok_ii:
+                print(f"[BLOK II] [SKIP] Halaman tidak berada di 'Blok II' setelah pilih_blok('II') (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error : Gagal masuk Blok II")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+
             # Pengisian '201. Nama penghuni' dengan verifikasi scan halaman
             max_nama_attempts = 5
             nama_terisi_sukses = False
