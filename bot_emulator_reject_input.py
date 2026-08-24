@@ -2571,7 +2571,10 @@ def proses_update_reject_nik():
                     # Verifikasi setelah pengisian: baca ulang field NIK
                     nik_setelah_isi = baca_nilai_field_nik(d)
                     if not nik_setelah_isi or nik_setelah_isi != nik:
-                        print(f"[SCAN NIK] [VERIFIKASI GAGAL] Setelah pengisian, field NIK berisi '{nik_setelah_isi}' (seharusnya '{nik}'). Mengulangi pengisian...")
+                        print(f"[SCAN NIK] [VERIFIKASI GAGAL] Setelah pengisian, field NIK berisi '{nik_setelah_isi}' (seharusnya '{nik}'). Melakukan swipe ke bawah & ke atas...")
+                        loop_swipe_statis(delta_y=-400, loop=1)
+                        time.sleep(0.3)
+                        loop_swipe_statis(delta_y=400, loop=1)
                         time.sleep(0.5)
                         continue  # Ulangi loop tanpa menekan Cek NIK
                     else:
@@ -2585,7 +2588,10 @@ def proses_update_reject_nik():
 
                 is_nik_invalid, msg_error = cek_nik_tidak_valid(d)
                 if is_nik_invalid:
-                    print(f"[SCAN NIK] [RETRY NIK] Terdeteksi '{msg_error}' (percobaan ke-{nik_attempt}/{max_nik_attempts}). Mengulangi pengisian NIK & ketuk Cek NIK...")
+                    print(f"[SCAN NIK] [RETRY NIK] Terdeteksi '{msg_error}' (percobaan ke-{nik_attempt}/{max_nik_attempts}). Melakukan swipe ke bawah & ke atas...")
+                    loop_swipe_statis(delta_y=-400, loop=1)
+                    time.sleep(0.3)
+                    loop_swipe_statis(delta_y=400, loop=1)
                     time.sleep(SLEEP_SHORT)
                 else:
                     print(f"[SCAN NIK] [SUKSES] NIK '{nik}' berhasil dicek (tidak ada pesan NIK tidak valid) pada percobaan ke-{nik_attempt}.")
@@ -2593,9 +2599,11 @@ def proses_update_reject_nik():
                     break
 
             if not nik_sukses:
-                print(f"[SCAN NIK] [GAGAL] NIK '{nik}' tetap 'NIK tidak valid' setelah {max_nik_attempts}x percobaan. Menyimpan status Excel & melewatkan baris ini...")
+                print(f"[SCAN NIK] [GAGAL] NIK '{nik}' tetap 'NIK tidak valid' setelah {max_nik_attempts}x percobaan. Menyimpan status Excel & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error : Nik tidak valid")
-                raise Exception(f"Error : Nik tidak valid untuk IDPEL {idpel}")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
 
             loop_swipe_dinamis(delta_y=-700, target_text="204. Status kepemilikan")
             input_textbox(label_text="203. Nomor telepon", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
