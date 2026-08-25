@@ -14,6 +14,7 @@ from konfigurasi import (
     LDPLAYER_ADB,
     EMULATOR_INDEX_2 as EMULATOR_INDEX,
     EMULATOR_PORTS_2 as EMULATOR_PORTS,
+    EXCEL_FILE_REJECT_2 as EXCEL_FILE,
     SLEEP_SHORT,
     SLEEP_MEDIUM,
     SLEEP_LONG,
@@ -340,13 +341,15 @@ def cek_apakah_halaman_terakhir():
 
 
 
-def salin_reject_ke_excel(file_txt="reject.txt", file_excel="data_reject.xlsx"):
+def salin_reject_ke_excel(file_txt="reject2.txt", file_excel=None):
     """
-    Menyalin data dari reject.txt ke file data_reject.xlsx.
+    Menyalin data dari reject2.txt ke file data_reject2.xlsx.
     Menambahkan data di baris paling bawah.
     Kolom A = idpel
     Kolom B = no_meter
     """
+    if file_excel is None:
+        file_excel = EXCEL_FILE
     print(f"\n[EXCEL] Menyalin data dari '{file_txt}' ke '{file_excel}'...")
     if not os.path.exists(file_txt):
         print(f"[WARNING] File '{file_txt}' tidak ditemukan. Batal menyalin ke Excel.")
@@ -420,7 +423,7 @@ def proses_ekstraksi_dan_swipe():
     navigasi tombol Next dan scroll dinamis super cepat kembali ke page paling atas.
     """
     print("\n[LANGKAH 4] Memulai ekstraksi data tabel dan swipe dinamis...")
-    file_output = "reject.txt"
+    file_output = "reject2.txt"
     set_terproses = set()
 
     # Helper simpan baris data berdasarkan CUSTOM_COLUMNS
