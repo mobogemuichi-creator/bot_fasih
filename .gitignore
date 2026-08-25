@@ -9,7 +9,9 @@
 !3_run_bot_emulator_meter.bat
 !3_run_bot_emulator_meter2.bat
 !4_run_bot_emulator_reject_list.bat
+!4_run_bot_emulator_reject_list2.bat
 !5_run_bot_emulator_reject_input.bat
+!5_run_bot_emulator_reject_input2.bat
 !auto_update.bat
 
 # Whitelist allowed .py scripts
@@ -18,7 +20,9 @@
 !bot_emulator_meter.py
 !bot_emulator_meter2.py
 !bot_emulator_reject_input.py
+!bot_emulator_reject_input2.py
 !bot_emulator_reject_list.py
+!bot_emulator_reject_list2.py
 !ss_gmaps.py
 !ss_gmaps2.py
 !konfigurasi.py
