@@ -14,13 +14,17 @@ from konfigurasi import (
     LDPLAYER_ADB,
     EMULATOR_INDEX_2 as EMULATOR_INDEX,
     EMULATOR_PORTS_2 as EMULATOR_PORTS,
-    EXCEL_FILE_REJECT_2 as EXCEL_FILE,
     SLEEP_SHORT,
     SLEEP_MEDIUM,
     SLEEP_LONG,
     CUSTOM_COLUMNS,
     FILTER_STATUS_TARGET,
 )
+
+try:
+    from konfigurasi import EXCEL_FILE_REJECT_2 as EXCEL_FILE
+except ImportError:
+    EXCEL_FILE = "data_reject2.xlsx"
 
 # Variabel global untuk koneksi emulator
 d = None

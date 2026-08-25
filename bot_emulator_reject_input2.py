@@ -12,11 +12,15 @@ from konfigurasi import (
     LDPLAYER_ADB,
     EMULATOR_INDEX_2 as EMULATOR_INDEX,
     EMULATOR_PORTS_2 as EMULATOR_PORTS,
-    EXCEL_FILE_REJECT_2 as EXCEL_FILE,
     SLEEP_SHORT,
     SLEEP_MEDIUM,
     SLEEP_LONG_REJECT as SLEEP_LONG,
 )
+
+try:
+    from konfigurasi import EXCEL_FILE_REJECT_2 as EXCEL_FILE
+except ImportError:
+    EXCEL_FILE = "data_reject2.xlsx"
 
 d = None
 
