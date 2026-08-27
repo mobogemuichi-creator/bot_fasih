@@ -1714,6 +1714,13 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         Alamat: TURUS LUMBUNG LSTR
     """
     print("\n[BLOK I] Men-scroll ke bawah secara dinamis hingga data alamat terlihat...")
+    info_alamat = {
+        "Provinsi": "",
+        "Kabupaten": "",
+        "Kecamatan": "",
+        "Desa/Kelurahan": "",
+        "Alamat": ""
+    }
     max_swipes = 20
     for swipe_idx in range(1, max_swipes + 1):
         if (check_exists(d(textContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or 
@@ -1766,13 +1773,6 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
 
     # === AMBIL DATA ALAMAT & SIMPAN KE temp_alamat.txt ===
     print("[BLOK I] Mengambil data alamat dari screen...")
-    info_alamat = {
-        "Provinsi": "",
-        "Kabupaten": "",
-        "Kecamatan": "",
-        "Desa/Kelurahan": "",
-        "Alamat": ""
-    }
     
     mapping_keys = [
         ("Provinsi", ["a. Provinsi", "Provinsi"]),
