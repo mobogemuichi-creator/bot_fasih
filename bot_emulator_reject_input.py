@@ -2504,20 +2504,21 @@ def proses_update_reject_nik():
                     try:
                         elements = d.xpath(f"//*[contains(@text, '{pattern}') or contains(@content-desc, '{pattern}')]").all()
                         for el in elements:
-                            bounds_str = el.attrib.get('bounds', '')
+                            attrib = el.attrib if hasattr(el, 'attrib') else {}
+                            bounds_str = attrib.get('bounds', '')
                             import re
                             pts = [int(x) for x in re.findall(r'\d+', bounds_str)]
                             if len(pts) == 4:
                                 x1, y1, x2, y2 = pts
                                 width = x2 - x1
                                 height = y2 - y1
-                                el_tag = el.tag or "node"
-                                el_text = el.text or el.attrib.get('content-desc', '')
+                                el_tag = attrib.get('class', 'node')
+                                el_text = attrib.get('text', '') or attrib.get('content-desc', '')
                                 
                                 if width < 50:
-                                    print(f"[SCAN NODE] [DIABAIKAN] Tag: <{el_tag}> | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px < 50px)")
+                                    print(f"[SCAN NODE] [DIABAIKAN] Class: {el_tag} | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px < 50px)")
                                 else:
-                                    print(f"[SCAN NODE] [DIPILIH] Tag: <{el_tag}> | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px >= 50px)")
+                                    print(f"[SCAN NODE] [DIPILIH] Class: {el_tag} | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px >= 50px)")
                                     target_bounds = {"left": x1, "top": y1, "right": x2, "bottom": y2, "text": el_text, "tag": el_tag}
                                     break
                         if target_bounds:
