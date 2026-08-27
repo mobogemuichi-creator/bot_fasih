@@ -550,8 +550,8 @@ def eksekusi_submit_dan_selesai(row, idpel, row_attempt):
     if not submit_muncul:
         print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
 
-    #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
-    ketuk_ok_submit_diproses(max_attempts=5)
+    #25 ketuk "OK" pada modal Submit diproses (retry 10x & fallback statis bounds 528, 1691)
+    ketuk_ok_submit_diproses(max_attempts=10)
 
     #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
     print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
@@ -1610,6 +1610,97 @@ def baca_nilai_field_nik(d_dev):
     return val_existing
 
 
+def baca_nilai_field_no_telp(d_dev):
+    """Membaca nilai teks saat ini pada field '203. Nomor telepon'"""
+    val_existing = ""
+    try:
+        label = d_dev(textContains="203. Nomor telepon")
+        if not check_exists(label):
+            label = d_dev(descriptionContains="203. Nomor telepon")
+        if not check_exists(label):
+            label = d_dev(textContains="Nomor telepon")
+
+        if check_exists(label):
+            input_el = label.down(className="android.widget.EditText")
+            if not check_exists(input_el):
+                input_el = label.sibling(className="android.widget.EditText")
+            if check_exists(input_el):
+                val_existing = (input_el.get_text() or "").strip()
+
+        if not val_existing:
+            xp = "//*[contains(@text, '203.') or contains(@content-desc, '203.') or contains(@text, 'Nomor telepon') or contains(@content-desc, 'Nomor telepon')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                val_existing = (d_dev.xpath(xp).info.get('text', '') or "").strip()
+    except Exception as e:
+        print(f"[SCAN NO TELP] Exception saat membaca field No Telp: {e}")
+
+    return val_existing
+
+
+def isi_dan_verifikasi_no_telp(d_dev, target_val="-", max_attempts=5):
+    """
+    Memasukkan dan memverifikasi pengisian field '203. Nomor telepon':
+    - Scan apakah isinya sudah '-' atau belum.
+    - Jika belum, ulangi dengan mendeteksi bounds EditText, mengklik titik tengah bounds (cx, cy), dan menginput '-'.
+    """
+    print(f"[INPUT NO TELP] Memeriksa apakah field '203. Nomor telepon' sudah terisi '{target_val}'...")
+    val_existing = baca_nilai_field_no_telp(d_dev)
+    if val_existing == target_val or "-" in val_existing:
+        print(f"[INPUT NO TELP] [SUKSES] Field '203. Nomor telepon' sudah terisi '{val_existing}'.")
+        return True
+
+    for attempt in range(1, max_attempts + 1):
+        print(f"[INPUT NO TELP] Pengisian '203. Nomor telepon' (Percobaan {attempt}/{max_attempts})...")
+        
+        # 1. Coba input via input_textbox standar
+        input_textbox(label_text="203. Nomor telepon", value=target_val, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+        time.sleep(0.5)
+
+        val_now = baca_nilai_field_no_telp(d_dev)
+        if val_now == target_val or "-" in val_now:
+            print(f"[INPUT NO TELP] [SUKSES VERIFIKASI] Field '203. Nomor telepon' terisi '{val_now}' pada percobaan ke-{attempt}.")
+            return True
+
+        # 2. Jika belum terisi '-', gunakan bounds EditText secara presisi
+        print(f"[INPUT NO TELP] [RETRY] Field belum terisi '{target_val}' (saat ini: '{val_now}'). Menggunakan scan bounds EditText...")
+        tb_bounds = None
+        try:
+            xp = "//*[contains(@text, '203.') or contains(@content-desc, '203.') or contains(@text, 'Nomor telepon') or contains(@content-desc, 'Nomor telepon')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                info = d_dev.xpath(xp).info
+                b = info.get("bounds") if isinstance(info, dict) else None
+                if b and isinstance(b, dict):
+                    cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                    cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                    tb_bounds = (cx, cy)
+                    print(f"[INPUT NO TELP] Bounds EditText terdeteksi: [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik Tengah ({cx}, {cy})")
+        except Exception as err:
+            print(f"[INPUT NO TELP] Error scan bounds EditText: {err}")
+
+        if tb_bounds:
+            d_dev.click(tb_bounds[0], tb_bounds[1])
+            time.sleep(0.3)
+            try:
+                if hasattr(d_dev, 'send_keys'):
+                    d_dev.send_keys(target_val)
+                else:
+                    d_dev.shell(f"input text {target_val}")
+            except Exception:
+                try:
+                    d_dev.shell(f"input text {target_val}")
+                except Exception:
+                    pass
+            time.sleep(0.5)
+
+        val_final = baca_nilai_field_no_telp(d_dev)
+        if val_final == target_val or "-" in val_final:
+            print(f"[INPUT NO TELP] [SUKSES VERIFIKASI BOUNDS] Field '203. Nomor telepon' terisi '{val_final}'.")
+            return True
+
+    print(f"[WARNING] Field '203. Nomor telepon' belum dapat diverifikasi '{target_val}' setelah {max_attempts}x percobaan.")
+    return False
+
+
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
     Fungsi untuk men-scroll dan mengambil data alamat (Provinsi, Kabupaten, Kecamatan, Desa/Kelurahan, Alamat)
@@ -2307,12 +2398,12 @@ def ketuk_tombol_increment():
         raise Exception("Tombol 'Increment' tidak ditemukan.")
 
 
-def ketuk_ok_submit_diproses(max_attempts=5):
+def ketuk_ok_submit_diproses(max_attempts=10):
     """
     Memeriksa dan mengetuk tombol 'OK' pada modal 'Submit diproses'.
     Jika setelah diketuk modal masih tetap muncul ('Submit diproses' masih ada di layar),
-    akan mengulang pengetukan hingga `max_attempts` kali (default 5).
-    Jika setelah 5x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
+    akan mengulang pengetukan hingga `max_attempts` kali (default 10).
+    Jika setelah 10x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
     """
     print("\n[SUBMIT DIPROSES] Memeriksa modal 'Submit diproses'...")
     
@@ -2885,7 +2976,7 @@ def proses_update_reject_nik():
                 break
 
             loop_swipe_dinamis(delta_y=-700, target_text="204. Status kepemilikan")
-            input_textbox(label_text="203. Nomor telepon", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+            isi_dan_verifikasi_no_telp(d, target_val='-', max_attempts=5)
             
             # Pengecekan status RadioButton: Ketuk '1. Milik sendiri' HANYA jika belum tercentang
             if cek_radio_button_tercentang("1. Milik sendiri", exact=False):
