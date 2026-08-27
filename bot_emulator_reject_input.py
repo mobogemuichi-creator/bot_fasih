@@ -2486,13 +2486,19 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            # Scan & scroll ke bawah sampai terlihat text "Berhasil Didata"
+            # Scan & scroll ke bawah sampai terlihat text "Berhasil Didata" dan verifikasi centang via bounds
             print("[RADIO] Memulai scan & scroll untuk mencari 'Berhasil Didata'...")
             radio_found = False
             max_scan_attempts = 10
 
             for scan_attempt in range(1, max_scan_attempts + 1):
-                # 1. Cek apakah teks "Berhasil Didata" atau "Berhasil didata" terlihat di layar
+                # Cek dulu apakah sudah tercentang dari awal (menggunakan beda XML child TextView/focused)
+                if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                    print("[RADIO] [SUKSES] RadioButton 'Berhasil Didata' sudah tercentang!")
+                    radio_found = True
+                    break
+
+                # 1. Scan elemen teks "Berhasil Didata" atau "1. Berhasil didata"
                 target_el = None
                 for pattern in ["Berhasil Didata", "Berhasil didata", "1. Berhasil didata"]:
                     try:
@@ -2512,10 +2518,26 @@ def proses_update_reject_nik():
                         cx = (b.get("left", 0) + b.get("right", 0)) // 2
                         cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
                         print(f"[RADIO] Terlihat 'Berhasil Didata' pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Ketuk koordinat ({cx}, {cy})")
+                        
+                        # Ketuk titik tengah bounds hasil scan
                         d.click(cx, cy)
-                        time.sleep(SLEEP_SHORT)
-                        radio_found = True
-                        break
+                        time.sleep(0.5)
+
+                        # Pendeteksi: Verifikasi apakah ketuk bounds berhasil mengubah status ke TERCENTANG
+                        if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                            print(f"[RADIO] [SUKSES VERIFIKASI] Ketuk koordinat bounds ({cx}, {cy}) BERHASIL! RadioButton 'Berhasil Didata' kini tercentang.")
+                            radio_found = True
+                            break
+                        else:
+                            print(f"[RADIO] [WARNING] Ketuk koordinat bounds ({cx}, {cy}) GAGAL (RadioButton belum tercentang). Mencoba ketuk offset koordinat RadioButton di sebelah kiri...")
+                            # Fallback: Ketuk lingkaran RadioButton di sebelah kiri label (offset x)
+                            left_x = max(10, b.get("left", 0) - 40)
+                            d.click(left_x, cy)
+                            time.sleep(0.5)
+                            if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                                print(f"[RADIO] [SUKSES VERIFIKASI] Ketuk offset RadioButton ({left_x}, {cy}) BERHASIL! RadioButton kini tercentang.")
+                                radio_found = True
+                                break
 
                 # 2. Cek apakah label "Hasil Pendataan" telah terdorong ke atas layar sampai hilang
                 is_hasil_pendataan_hilang = not (
@@ -2534,7 +2556,7 @@ def proses_update_reject_nik():
                     time.sleep(SLEEP_SHORT)
 
             if not radio_found:
-                print(f"[RADIO CHECK] [SKIP] Teks/RadioButton 'Berhasil Didata' tidak ditemukan (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
+                print(f"[RADIO CHECK] [SKIP] RadioButton 'Berhasil Didata' belum tercentang setelah scan & ketuk (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error : RadioButton 1. Berhasil didata tidak tercentang")
                 kembali_ke_daftar_assignment()
                 sukses_baris = True
