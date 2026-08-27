@@ -2442,17 +2442,18 @@ def proses_update_reject_nik():
                 pass
 
             if is_galat_koordinat_foto:
-                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & mengetuk 'Dismiss' dua kali...")
+                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "koordinat & foto tidak ada")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+            else:
                 print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
                 ketuk("Dismiss", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
                 print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
                 ketuk("Dismiss", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
 
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
