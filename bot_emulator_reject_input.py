@@ -2347,8 +2347,8 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_MEDIUM)
 
             #7 ketuk tombol 'YA'
-            ketuk("YA", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
+            ketuk("YA", sleep_after=SLEEP_LONG)
+            time.sleep(SLEEP_LONG)
 
             # Cek jika muncul text/dialog "Perhatian"
             if check_exists(d(text="Perhatian")) or check_exists(d(textContains="Perhatian")) or check_exists(d(resourceId="id.go.bpsfasih:id/judul_bottomDialog")):
@@ -2359,7 +2359,7 @@ def proses_update_reject_nik():
                     ketuk("DOWNLOAD SEKARANG", sleep_after=SLEEP_SHORT)
                 print("[LOADING] Menunggu proses download / loading selesai...")
                 tunggu_loading(timeout=30)
-                time.sleep(SLEEP_SHORT)
+                time.sleep(SLEEP_LONG)
 
                 # Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai
                 print("[RETRY] Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai...")
@@ -2368,10 +2368,35 @@ def proses_update_reject_nik():
                 ketuk("BUKA", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_MEDIUM)
                 ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
+                time.sleep(SLEEP_LONG)
 
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
+            # Scan tombol Kirim terlebih dahulu untuk mengecek posisi tombol "Kirim" menggunakan bounds
+            print("[SCAN KIRIM] Memindai posisi tombol 'Kirim' menggunakan bounds...")
+            kirim_bounds = None
+            try:
+                btn_kirim = d(className="android.widget.Button", text="Kirim")
+                if not btn_kirim.exists():
+                    btn_kirim = d(text="Kirim", clickable=True)
+                if not btn_kirim.exists():
+                    btn_kirim = d(text="Kirim")
+
+                if check_exists(btn_kirim):
+                    info = btn_kirim.info
+                    b = info.get("bounds") if isinstance(info, dict) else None
+                    if b and isinstance(b, dict):
+                        cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                        cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                        kirim_bounds = (cx, cy)
+                        print(f"[SCAN KIRIM] Posisi tombol 'Kirim' terdeteksi pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik tengah ({cx}, {cy})")
+            except Exception as e:
+                print(f"[SCAN KIRIM] Gagal memindai bounds tombol Kirim: {e}")
+
+            if kirim_bounds:
+                d.click(kirim_bounds[0], kirim_bounds[1])
+                time.sleep(SLEEP_SHORT)
+            else:
+                ketuk("Kirim", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
 
             # Ketuk teks yang mengandung kata "GALAT"
             ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
