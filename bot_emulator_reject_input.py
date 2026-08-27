@@ -2529,50 +2529,7 @@ def proses_update_reject_nik():
 
             print("[SCAN] [SUKSES] Label 'Mulai Wawancara' terdeteksi! Melanjutkan ke proses berikutnya...")
 
-            # Ketuk tombol Kirim (dan ketuk ulang jika "Mulai Wawancara" masih terdeteksi)
-            max_kirim_attempts = 5
-            for kirim_attempt in range(1, max_kirim_attempts + 1):
-                print(f"[SCAN KIRIM] Memindai posisi tombol 'Kirim' menggunakan bounds (Percobaan {kirim_attempt}/{max_kirim_attempts})...")
-                kirim_bounds = None
-                try:
-                    btn_kirim = d(className="android.widget.Button", text="Kirim")
-                    if not btn_kirim.exists():
-                        btn_kirim = d(text="Kirim", clickable=True)
-                    if not btn_kirim.exists():
-                        btn_kirim = d(text="Kirim")
-
-                    if check_exists(btn_kirim):
-                        info = btn_kirim.info
-                        b = info.get("bounds") if isinstance(info, dict) else None
-                        if b and isinstance(b, dict):
-                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
-                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
-                            kirim_bounds = (cx, cy)
-                            print(f"[SCAN KIRIM] Posisi tombol 'Kirim' terdeteksi pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik tengah ({cx}, {cy})")
-                except Exception as e:
-                    print(f"[SCAN KIRIM] Gagal memindai bounds tombol Kirim: {e}")
-
-                if kirim_bounds:
-                    d.click(kirim_bounds[0], kirim_bounds[1])
-                    time.sleep(SLEEP_SHORT)
-                else:
-                    ketuk("Kirim", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                # Scan untuk memverifikasi apakah "Mulai Wawancara" masih terdeteksi di layar
-                time.sleep(1.0)
-                still_mulai_wawancara = (
-                    check_exists(d(textContains="Mulai Wawancara")) or 
-                    check_exists(d(descriptionContains="Mulai Wawancara")) or
-                    check_exists(d.xpath("//*[contains(@text, 'Mulai Wawancara') or contains(@content-desc, 'Mulai Wawancara')]"))
-                )
-
-                if still_mulai_wawancara:
-                    print(f"[RETRY KIRIM] 'Mulai Wawancara' masih terdeteksi di layar setelah ketuk 'Kirim' (Percobaan {kirim_attempt}/{max_kirim_attempts}). Mengulangi ketuk 'Kirim'...")
-                    time.sleep(SLEEP_SHORT)
-                else:
-                    print(f"[RETRY KIRIM] [SUKSES] 'Mulai Wawancara' sudah tidak terdeteksi (halaman berpindah/modal terbuka) pada percobaan ke-{kirim_attempt}.")
-                    break
+            
 
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
@@ -2703,6 +2660,51 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
             
+            # Ketuk tombol Kirim (dan ketuk ulang jika "Mulai Wawancara" masih terdeteksi)
+            max_kirim_attempts = 5
+            for kirim_attempt in range(1, max_kirim_attempts + 1):
+                print(f"[SCAN KIRIM] Memindai posisi tombol 'Kirim' menggunakan bounds (Percobaan {kirim_attempt}/{max_kirim_attempts})...")
+                kirim_bounds = None
+                try:
+                    btn_kirim = d(className="android.widget.Button", text="Kirim")
+                    if not btn_kirim.exists():
+                        btn_kirim = d(text="Kirim", clickable=True)
+                    if not btn_kirim.exists():
+                        btn_kirim = d(text="Kirim")
+
+                    if check_exists(btn_kirim):
+                        info = btn_kirim.info
+                        b = info.get("bounds") if isinstance(info, dict) else None
+                        if b and isinstance(b, dict):
+                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                            kirim_bounds = (cx, cy)
+                            print(f"[SCAN KIRIM] Posisi tombol 'Kirim' terdeteksi pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik tengah ({cx}, {cy})")
+                except Exception as e:
+                    print(f"[SCAN KIRIM] Gagal memindai bounds tombol Kirim: {e}")
+
+                if kirim_bounds:
+                    d.click(kirim_bounds[0], kirim_bounds[1])
+                    time.sleep(SLEEP_SHORT)
+                else:
+                    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+                    time.sleep(SLEEP_SHORT)
+
+                # Scan untuk memverifikasi apakah "Mulai Wawancara" masih terdeteksi di layar
+                time.sleep(1.0)
+                still_mulai_wawancara = (
+                    check_exists(d(textContains="Mulai Wawancara")) or 
+                    check_exists(d(descriptionContains="Mulai Wawancara")) or
+                    check_exists(d.xpath("//*[contains(@text, 'Mulai Wawancara') or contains(@content-desc, 'Mulai Wawancara')]"))
+                )
+
+                if still_mulai_wawancara:
+                    print(f"[RETRY KIRIM] 'Mulai Wawancara' masih terdeteksi di layar setelah ketuk 'Kirim' (Percobaan {kirim_attempt}/{max_kirim_attempts}). Mengulangi ketuk 'Kirim'...")
+                    time.sleep(SLEEP_SHORT)
+                else:
+                    print(f"[RETRY KIRIM] [SUKSES] 'Mulai Wawancara' sudah tidak terdeteksi (halaman berpindah/modal terbuka) pada percobaan ke-{kirim_attempt}.")
+                    break
+
             # Cek jika modal ringkasan validasi menampilkan "GALAT 0" DAN "KOSONG 0" (form sudah valid & lengkap dari awal)
             time.sleep(0.5)
             is_galat_0 = (
