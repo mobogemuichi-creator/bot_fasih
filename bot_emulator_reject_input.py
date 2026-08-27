@@ -2370,6 +2370,30 @@ def proses_update_reject_nik():
                 ketuk("YA", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_LONG)
 
+            # Scan halaman berulang kali sampai ketemu label "Sukses Proses simpan" (timeout 30 detik)
+            print("[SCAN] Menunggu label 'Sukses Proses simpan' muncul di layar (timeout 30s)...")
+            is_sukses_proses_simpan = False
+            t_end = time.time() + 30
+            while time.time() < t_end:
+                try:
+                    if (check_exists(d(textContains="Sukses Proses simpan")) or 
+                        check_exists(d(descriptionContains="Sukses Proses simpan")) or
+                        check_exists(d.xpath("//*[contains(@text, 'Sukses Proses simpan') or contains(@content-desc, 'Sukses Proses simpan')]"))):
+                        is_sukses_proses_simpan = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.3)
+
+            if not is_sukses_proses_simpan:
+                print(f"[TIMEOUT] Label 'Sukses Proses simpan' tidak terdeteksi setelah 30 detik untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error: Timeout Sukses Proses simpan")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+
+            print("[SCAN] [SUKSES] Label 'Sukses Proses simpan' terdeteksi! Melanjutkan ke proses berikutnya...")
+
             # Scan tombol Kirim terlebih dahulu untuk mengecek posisi tombol "Kirim" menggunakan bounds
             print("[SCAN KIRIM] Memindai posisi tombol 'Kirim' menggunakan bounds...")
             kirim_bounds = None
