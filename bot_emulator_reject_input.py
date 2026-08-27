@@ -589,6 +589,40 @@ def eksekusi_submit_dan_selesai(row, idpel, row_attempt):
         return "sukses"
 
 
+def isi_catatan_dan_submit(row, idpel, row_attempt):
+    # Catatan
+    input_textbox(label_text="Catatan", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+
+    # 18 ketuk tombol "Kirim" pertama
+    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    # 19 ketuk tombol "YA" (jika muncul konfirmasi YA)
+    if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
+        ketuk("YA", sleep_after=SLEEP_SHORT)
+        time.sleep(SLEEP_SHORT)
+
+    # Cek apakah modal ringkasan validasi menampilkan 'GALAT 0' (validasi error = 0)
+    is_galat_0 = False
+    print("[SUBMIT] Memeriksa status 'GALAT 0' pada modal ringkasan validasi...")
+    for galat_attempt in range(15):
+        if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
+            check_exists(d(textContains="GALAT 0")) or 
+            check_exists(d(descriptionContains="GALAT 0")) or 
+            check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
+            is_galat_0 = True
+            break
+        time.sleep(0.3)
+
+    if not is_galat_0:
+        print(f"[SUBMIT] [SKIP] Teks 'GALAT 0' tidak terdeteksi (terdapat error validasi) untuk IDPEL {idpel}. Menyimpan status Excel 'koordinat & foto tidak ada' & berpindah ke baris berikutnya...")
+        simpan_status_excel(row, "koordinat & foto tidak ada")
+        kembali_ke_daftar_assignment()
+        return "next"
+
+    return eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+
+
 def cari_dan_ketuk_search_box(idpel):
     """Mencari text box search berdasarkan hirarki node dump.xml, mengklik, memasukkan IDPEL, dan menekan Enter"""
     print(f"\n[SEARCH] Mencari text box search di layar...")
@@ -2562,6 +2596,42 @@ def proses_update_reject_nik():
                     sukses_baris = True
                     break
 
+            is_kosong_1 = (
+                check_exists(d(textContains="KOSONG 1")) or 
+                check_exists(d(descriptionContains="KOSONG 1")) or 
+                check_exists(d.xpath("//*[contains(@text, 'KOSONG 1') or contains(@content-desc, 'KOSONG 1')]"))
+            )
+
+            if is_galat_0 and is_kosong_1:
+                print(f"[KIRIM CHECK] Terdeteksi 'GALAT 0' dan 'KOSONG 1'! Ketuk 'KOSONG 1' -> 'Catatan' -> 'Lihat'...")
+                if check_exists(d(textContains="KOSONG 1")):
+                    d(textContains="KOSONG 1").click()
+                else:
+                    ketuk("KOSONG 1", exact=False, sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+
+                if check_exists(d(textContains="Catatan")):
+                    d(textContains="Catatan").click()
+                else:
+                    ketuk("Catatan", exact=False, sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+
+                if check_exists(d(text="LIHAT")) or check_exists(d(text="Lihat")):
+                    ketuk("LIHAT", exact=False, sleep_after=SLEEP_SHORT)
+                elif check_exists(d(textContains="Lihat")) or check_exists(d(textContains="LIHAT")):
+                    ketuk("Lihat", exact=False, sleep_after=SLEEP_SHORT)
+                else:
+                    ketuk("LIHAT", exact=False, sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+
+                print("[CATATAN JUMP] Memproses pengisian field Catatan & Submit...")
+                res_submit = isi_catatan_dan_submit(row, idpel, row_attempt)
+                if res_submit == "retry":
+                    continue
+                else:
+                    sukses_baris = True
+                    break
+
             # Ketuk teks yang mengandung kata "GALAT"
             ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
@@ -2938,38 +3008,8 @@ def proses_update_reject_nik():
             pilih_blok("IV")
             time.sleep(SLEEP_LONG)
 
-            #Catatan
-            input_textbox(label_text="Catatan", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
-
-            #18 ketuk tombol "Kirim" pertama
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #19 ketuk tombol "YA" (jika muncul konfirmasi YA)
-            if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
-                ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-
-            # Cek apakah modal ringkasan validasi menampilkan 'GALAT 0' (validasi error = 0)
-            is_galat_0 = False
-            print("[SUBMIT] Memeriksa status 'GALAT 0' pada modal ringkasan validasi...")
-            for galat_attempt in range(15):
-                if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
-                    check_exists(d(textContains="GALAT 0")) or 
-                    check_exists(d(descriptionContains="GALAT 0")) or 
-                    check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
-                    is_galat_0 = True
-                    break
-                time.sleep(0.3)
-
-            if not is_galat_0:
-                print(f"[SUBMIT] [SKIP] Teks 'GALAT 0' tidak terdeteksi (terdapat error validasi) untuk IDPEL {idpel}. Menyimpan status Excel 'koordinat & foto tidak ada' & berpindah ke baris berikutnya...")
-                simpan_status_excel(row, "koordinat & foto tidak ada")
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
-
-            res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+            # Catatan & Submit
+            res_submit = isi_catatan_dan_submit(row, idpel, row_attempt)
             if res_submit == "retry":
                 continue
             else:
