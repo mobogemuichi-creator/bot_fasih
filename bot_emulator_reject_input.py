@@ -2370,6 +2370,35 @@ def proses_update_reject_nik():
                 ketuk("YA", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
 
+            ketuk("Kirim", sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
+
+            # Ketuk teks yang mengandung kata "GALAT"
+            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
+
+            # Cek jika muncul kata "Koordinat lokasi meteran" atau "Foto rumah tampak depan"
+            is_galat_koordinat_foto = False
+            try:
+                if (check_exists(d(textContains="Koordinat lokasi meteran")) or 
+                    check_exists(d(descriptionContains="Koordinat lokasi meteran")) or
+                    check_exists(d.xpath("//*[contains(@text, 'Koordinat lokasi meteran') or contains(@content-desc, 'Koordinat lokasi meteran')]")) or
+                    check_exists(d(textContains="Foto rumah tampak depan")) or
+                    check_exists(d(textContains="Foto ruimah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto rumah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto ruimah tampak depan")) or
+                    check_exists(d.xpath("//*[contains(@text, 'tampak depan') or contains(@content-desc, 'tampak depan')]"))):
+                    is_galat_koordinat_foto = True
+            except Exception:
+                pass
+
+            if is_galat_koordinat_foto:
+                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "koordinat & foto tidak ada")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
