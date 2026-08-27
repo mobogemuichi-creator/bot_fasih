@@ -510,7 +510,83 @@ def kembali_ke_daftar_assignment(max_retry=5):
     except Exception as err:
         print(f"[WARNING] Gagal alur recovery Surveys: {err}")
 
-    return False
+def eksekusi_submit_dan_selesai(row, idpel, row_attempt):
+    print("[SUBMIT] [SUKSES] Mengetuk tombol 'Kirim' kedua di dalam modal...")
+    #20 ketuk tombol "Kirim" kedua di dalam modal
+    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #21 ketuk tombol "Konfirmasi"
+    ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #23 ketuk tombol "Konfirmasi"
+    ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #24 ketuk tombol "YA" (ulangi jika 'Submit diproses' belum muncul)
+    max_ya_attempts = 5
+    submit_muncul = False
+    for ya_attempt in range(1, max_ya_attempts + 1):
+        print(f"[SUBMIT] Mengetuk tombol 'YA' (Percobaan {ya_attempt}/{max_ya_attempts})...")
+        ketuk("YA", sleep_after=SLEEP_SHORT)
+        time.sleep(SLEEP_MEDIUM)
+
+        is_submit_modal = (
+            check_exists(d(textContains="Submit diproses")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
+            check_exists(d(text="OK"))
+        )
+
+        if is_submit_modal:
+            print(f"[SUBMIT] [SUKSES] Modal 'Submit diproses' terdeteksi setelah ketuk 'YA' pada percobaan ke-{ya_attempt}.")
+            submit_muncul = True
+            break
+        else:
+            print(f"[SUBMIT] [RETRY] Modal 'Submit diproses' belum muncul (percobaan ke-{ya_attempt}/{max_ya_attempts}). Mengulangi ketuk 'YA'...")
+            time.sleep(SLEEP_SHORT)
+
+    if not submit_muncul:
+        print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
+
+    #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
+    ketuk_ok_submit_diproses(max_attempts=5)
+
+    #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
+    print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
+    is_halaman_upload = False
+    for _ in range(5):
+        if (check_exists(d(textContains="Halaman Upload")) or 
+            check_exists(d(descriptionContains="Halaman Upload")) or 
+            check_exists(d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]"))):
+            is_halaman_upload = True
+            break
+        time.sleep(0.5)
+
+    if is_halaman_upload:
+        print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
+        d.press("back")
+        time.sleep(SLEEP_LONG)
+    else:
+        print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
+
+    #24. Tunggu kembali ke halaman 'Daftar Assignment'
+    sukses_da = tunggu_loading("Daftar Assignment", timeout=15)
+    if not sukses_da:
+        print(f"[WARNING] Teks 'Daftar Assignment' tidak terdeteksi setelah 15 detik untuk baris {row} (IDPEL: {idpel}).")
+        print(f"[RECOVERY] Mengurungkan simpan_status_excel, mengeksekusi kembali_ke_daftar_assignment()...")
+        kembali_ke_daftar_assignment()
+        if row_attempt < 3:
+            print(f"[RETRY BARIS] Mengulangi pemrosesan baris {row} ({idpel}) dari awal (percobaan ke-{row_attempt + 1})...")
+            return "retry"
+        else:
+            print(f"[RETRY GAGAL] Sudah mencoba 3x untuk baris {row} ({idpel}). Melanjutkan ke baris berikutnya.")
+            return "next"
+    else:
+        #25 Simpan status di Excel 'SUKSES DIUPDATE' HANYA jika sukses_da True
+        simpan_status_excel(row, "SUKSES DIUPDATE")
+        return "sukses"
 
 
 def cari_dan_ketuk_search_box(idpel):
@@ -2464,6 +2540,28 @@ def proses_update_reject_nik():
                     print(f"[RETRY KIRIM] [SUKSES] 'Mulai Wawancara' sudah tidak terdeteksi (halaman berpindah/modal terbuka) pada percobaan ke-{kirim_attempt}.")
                     break
 
+            # Cek jika modal ringkasan validasi menampilkan "GALAT 0" DAN "KOSONG 0" (form sudah valid & lengkap dari awal)
+            time.sleep(0.5)
+            is_galat_0 = (
+                check_exists(d(textContains="GALAT 0")) or 
+                check_exists(d(descriptionContains="GALAT 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))
+            )
+            is_kosong_0 = (
+                check_exists(d(textContains="KOSONG 0")) or 
+                check_exists(d(descriptionContains="KOSONG 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'KOSONG 0') or contains(@content-desc, 'KOSONG 0')]"))
+            )
+
+            if is_galat_0 and is_kosong_0:
+                print(f"[KIRIM CHECK] [SUKSES BERSIH] Terdeteksi 'GALAT 0' dan 'KOSONG 0' pada modal Kirim pertama! Memproses submit & selesai...")
+                res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+                if res_submit == "retry":
+                    continue
+                else:
+                    sukses_baris = True
+                    break
+
             # Ketuk teks yang mengandung kata "GALAT"
             ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
@@ -2871,81 +2969,10 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            print("[SUBMIT] [SUKSES] Terdeteksi 'GALAT 0'! Mengetuk tombol 'Kirim' kedua...")
-            #20 ketuk tombol "Kirim" kedua di dalam modal
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #21 ketuk tombol "Konfirmasi"
-            ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #23 ketuk tombol "Konfirmasi"
-            ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #24 ketuk tombol "YA" (ulangi jika 'Submit diproses' belum muncul)
-            max_ya_attempts = 5
-            submit_muncul = False
-            for ya_attempt in range(1, max_ya_attempts + 1):
-                print(f"[SUBMIT] Mengetuk tombol 'YA' (Percobaan {ya_attempt}/{max_ya_attempts})...")
-                ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_MEDIUM)
-
-                is_submit_modal = (
-                    check_exists(d(textContains="Submit diproses")) or
-                    check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
-                    check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
-                    check_exists(d(text="OK"))
-                )
-
-                if is_submit_modal:
-                    print(f"[SUBMIT] [SUKSES] Modal 'Submit diproses' terdeteksi setelah ketuk 'YA' pada percobaan ke-{ya_attempt}.")
-                    submit_muncul = True
-                    break
-                else:
-                    print(f"[SUBMIT] [RETRY] Modal 'Submit diproses' belum muncul (percobaan ke-{ya_attempt}/{max_ya_attempts}). Mengulangi ketuk 'YA'...")
-                    time.sleep(SLEEP_SHORT)
-
-            if not submit_muncul:
-                print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
-
-            #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
-            ketuk_ok_submit_diproses(max_attempts=5)
-
-            #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
-            print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
-            is_halaman_upload = False
-            for _ in range(5):
-                if (check_exists(d(textContains="Halaman Upload")) or 
-                    check_exists(d(descriptionContains="Halaman Upload")) or 
-                    check_exists(d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]"))):
-                    is_halaman_upload = True
-                    break
-                time.sleep(0.5)
-
-            if is_halaman_upload:
-                print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
-                d.press("back")
-                time.sleep(SLEEP_LONG)
+            res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+            if res_submit == "retry":
+                continue
             else:
-                print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
-
-            #24. Tunggu kembali ke halaman 'Daftar Assignment'
-            sukses_da = tunggu_loading("Daftar Assignment", timeout=15)
-            if not sukses_da:
-                print(f"[WARNING] Teks 'Daftar Assignment' tidak terdeteksi setelah 15 detik untuk baris {row} (IDPEL: {idpel}).")
-                print(f"[RECOVERY] Mengurungkan simpan_status_excel, mengeksekusi kembali_ke_daftar_assignment()...")
-                kembali_ke_daftar_assignment()
-                if row_attempt < 3:
-                    print(f"[RETRY BARIS] Mengulangi pemrosesan baris {row} ({idpel}) dari awal (percobaan ke-{row_attempt + 1})...")
-                    continue
-                else:
-                    print(f"[RETRY GAGAL] Sudah mencoba 3x untuk baris {row} ({idpel}). Melanjutkan ke baris berikutnya.")
-                    break
-            else:
-                #25 Simpan status di Excel 'SUKSES DIUPDATE' HANYA jika sukses_da True
-                simpan_status_excel(row, "SUKSES DIUPDATE")
                 sukses_baris = True
                 break
 
