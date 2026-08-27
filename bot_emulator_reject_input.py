@@ -2498,46 +2498,59 @@ def proses_update_reject_nik():
                     radio_found = True
                     break
 
-                # 1. Scan elemen teks "Berhasil Didata" atau "1. Berhasil didata"
-                target_el = None
+                # 1. Scan elemen teks "Berhasil Didata" atau "1. Berhasil didata" (abaikan node dummy width < 50px)
+                target_bounds = None
                 for pattern in ["Berhasil Didata", "Berhasil didata", "1. Berhasil didata"]:
                     try:
-                        el = d(textContains=pattern)
-                        if not el.exists():
-                            el = d(descriptionContains=pattern)
-                        if el.exists():
-                            target_el = el
+                        elements = d.xpath(f"//*[contains(@text, '{pattern}') or contains(@content-desc, '{pattern}')]").all()
+                        for el in elements:
+                            bounds_str = el.attrib.get('bounds', '')
+                            import re
+                            pts = [int(x) for x in re.findall(r'\d+', bounds_str)]
+                            if len(pts) == 4:
+                                x1, y1, x2, y2 = pts
+                                width = x2 - x1
+                                height = y2 - y1
+                                el_tag = el.tag or "node"
+                                el_text = el.text or el.attrib.get('content-desc', '')
+                                
+                                if width < 50:
+                                    print(f"[SCAN NODE] [DIABAIKAN] Tag: <{el_tag}> | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px < 50px)")
+                                else:
+                                    print(f"[SCAN NODE] [DIPILIH] Tag: <{el_tag}> | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px >= 50px)")
+                                    target_bounds = {"left": x1, "top": y1, "right": x2, "bottom": y2, "text": el_text, "tag": el_tag}
+                                    break
+                        if target_bounds:
                             break
-                    except Exception:
-                        pass
+                    except Exception as err:
+                        print(f"[SCAN NODE ERROR] Gagal scan xpath pattern '{pattern}': {err}")
 
-                if target_el and check_exists(target_el):
-                    info = target_el.info
-                    b = info.get("bounds") if isinstance(info, dict) else None
-                    if b and isinstance(b, dict):
-                        cx = (b.get("left", 0) + b.get("right", 0)) // 2
-                        cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
-                        print(f"[RADIO] Terlihat 'Berhasil Didata' pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Ketuk koordinat ({cx}, {cy})")
-                        
-                        # Ketuk titik tengah bounds hasil scan
-                        d.click(cx, cy)
+                if target_bounds:
+                    b = target_bounds
+                    cx = (b["left"] + b["right"]) // 2
+                    cy = (b["top"] + b["bottom"]) // 2
+                    print(f"[KLIK TARGET] Tag: <{b['tag']}> | Text: '{b['text']}' | Bounds: [{b['left']},{b['top']}][{b['right']},{b['bottom']}]")
+                    print(f"[KLIK TARGET] Mengetuk Titik Tengah Koordinat: ({cx}, {cy})...")
+                    
+                    # Ketuk titik tengah label hasil scan
+                    d.click(cx, cy)
+                    time.sleep(0.5)
+
+                    # Pendeteksi: Verifikasi apakah ketuk bounds berhasil mengubah status ke TERCENTANG
+                    if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                        print(f"[VERIFIKASI] [SUKSES] Ketuk koordinat ({cx}, {cy}) BERHASIL! Status RadioButton 'Berhasil Didata' kini TERCENTANG.")
+                        radio_found = True
+                        break
+                    else:
+                        radio_x = max(20, b["left"] - 48)
+                        print(f"[VERIFIKASI] [GAGAL] Ketuk koordinat ({cx}, {cy}) belum memicu centang.")
+                        print(f"[FALLBACK] Mencoba ketuk lingkaran RadioButton di offset X: {radio_x}, Y: {cy}...")
+                        d.click(radio_x, cy)
                         time.sleep(0.5)
-
-                        # Pendeteksi: Verifikasi apakah ketuk bounds berhasil mengubah status ke TERCENTANG
                         if cek_radio_button_tercentang("Berhasil didata", exact=False):
-                            print(f"[RADIO] [SUKSES VERIFIKASI] Ketuk koordinat bounds ({cx}, {cy}) BERHASIL! RadioButton 'Berhasil Didata' kini tercentang.")
+                            print(f"[VERIFIKASI] [SUKSES] Ketuk offset lingkaran RadioButton ({radio_x}, {cy}) BERHASIL! Status RadioButton kini TERCENTANG.")
                             radio_found = True
                             break
-                        else:
-                            print(f"[RADIO] [WARNING] Ketuk koordinat bounds ({cx}, {cy}) GAGAL (RadioButton belum tercentang). Mencoba ketuk offset koordinat RadioButton di sebelah kiri...")
-                            # Fallback: Ketuk lingkaran RadioButton di sebelah kiri label (offset x)
-                            left_x = max(10, b.get("left", 0) - 40)
-                            d.click(left_x, cy)
-                            time.sleep(0.5)
-                            if cek_radio_button_tercentang("Berhasil didata", exact=False):
-                                print(f"[RADIO] [SUKSES VERIFIKASI] Ketuk offset RadioButton ({left_x}, {cy}) BERHASIL! RadioButton kini tercentang.")
-                                radio_found = True
-                                break
 
                 # 2. Cek apakah label "Hasil Pendataan" telah terdorong ke atas layar sampai hilang
                 is_hasil_pendataan_hilang = not (
