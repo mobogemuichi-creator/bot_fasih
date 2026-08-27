@@ -426,6 +426,23 @@ def kembali_ke_daftar_assignment(max_retry=5):
             print("[RECOVERY] Sudah berada di halaman 'Daftar Assignment'.")
             return True
 
+        # Cek apakah loading screen / progress bar sedang berjalan sebelum percobaan berikutnya
+        is_loading = (
+            check_exists(d(resourceId="id.go.bpsfasih:id/card_progress")) or
+            check_exists(d(className="android.widget.ProgressBar")) or
+            check_exists(d(textContains="Mohon tunggu")) or
+            check_exists(d(textContains="Loading")) or
+            check_exists(d(textContains="Memuat"))
+        )
+        if is_loading:
+            print(f"[RECOVERY] Terdeteksi proses loading / progress bar (Percobaan {i}/{max_retry})! Menunggu loading selesai (timeout 30s)...")
+            tunggu_loading(timeout=30)
+            time.sleep(SLEEP_SHORT)
+            if (check_exists(d(resourceId="id.go.bpsfasih:id/title_toolbar", text="Daftar Assignment")) or 
+                check_exists(d(text="Daftar Assignment"))):
+                print("[RECOVERY] Berhasil kembali ke halaman 'Daftar Assignment' setelah loading selesai.")
+                return True
+
         # Ketuk tombol OK statis (bounds 528, 1691) jika ada modal OK yang menghalangi sebelum BACK
         print(f"[RECOVERY] Mengetuk tombol OK statis (bounds 528, 1691) sebelum BACK...")
         try:
@@ -1498,6 +1515,14 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     print("\n[BLOK I] Men-scroll ke bawah secara dinamis hingga data alamat terlihat...")
     max_swipes = 20
     for swipe_idx in range(1, max_swipes + 1):
+        if (check_exists(d(textContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or 
+            check_exists(d(descriptionContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or
+            check_exists(d(textContains="TIDAK DAPAT TERHUBUNG")) or
+            check_exists(d.xpath("//*[contains(@text, 'TERHUBUNG KE SERVER') or contains(@content-desc, 'TERHUBUNG KE SERVER')]"))):
+            print(f"[BLOK I] [WARNING] Terdeteksi 'TIDAK DAPAT TERHUBUNG KE SERVER' pada swipe ke-{swipe_idx}!")
+            info_alamat["server_error"] = True
+            return info_alamat
+
         if d(textContains="103.").exists() or d(textContains="Nama pada ID Pelanggan").exists():
             print(f"[BLOK I] Teks alamat ditemukan di layar (pemeriksaan ke-{swipe_idx}).")
             break
@@ -2458,6 +2483,25 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
+
+            # Cek jika terdeteksi label "TIDAK DAPAT TERHUBUNG KE SERVER" saat scroll/ambil data alamat
+            is_server_error = False
+            try:
+                if (alamat_dict and alamat_dict.get("server_error")) or \
+                   check_exists(d(textContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or \
+                   check_exists(d(descriptionContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or \
+                   check_exists(d(textContains="TIDAK DAPAT TERHUBUNG")) or \
+                   check_exists(d.xpath("//*[contains(@text, 'TERHUBUNG KE SERVER') or contains(@content-desc, 'TERHUBUNG KE SERVER')]")):
+                    is_server_error = True
+            except Exception:
+                pass
+
+            if is_server_error:
+                print(f"[BLOK I] [SKIP] Terdeteksi label 'TIDAK DAPAT TERHUBUNG KE SERVER' untuk IDPEL {idpel}. Menyimpan status 'Data Belum Cek IDPEL/NOMETER' & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Data Belum Cek IDPEL/NOMETER")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
 
             # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
             is_alamat_null = False
