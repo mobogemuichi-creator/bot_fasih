@@ -2574,116 +2574,6 @@ def proses_update_reject_nik():
                     print(f"[RETRY KIRIM] [SUKSES] 'Mulai Wawancara' sudah tidak terdeteksi (halaman berpindah/modal terbuka) pada percobaan ke-{kirim_attempt}.")
                     break
 
-            # Cek jika modal ringkasan validasi menampilkan "GALAT 0" DAN "KOSONG 0" (form sudah valid & lengkap dari awal)
-            time.sleep(0.5)
-            is_galat_0 = (
-                check_exists(d(textContains="GALAT 0")) or 
-                check_exists(d(descriptionContains="GALAT 0")) or 
-                check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))
-            )
-            is_kosong_0 = (
-                check_exists(d(textContains="KOSONG 0")) or 
-                check_exists(d(descriptionContains="KOSONG 0")) or 
-                check_exists(d.xpath("//*[contains(@text, 'KOSONG 0') or contains(@content-desc, 'KOSONG 0')]"))
-            )
-
-            if is_galat_0 and is_kosong_0:
-                print(f"[KIRIM CHECK] [SUKSES BERSIH] Terdeteksi 'GALAT 0' dan 'KOSONG 0' pada modal Kirim pertama! Memproses submit & selesai...")
-                res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
-                if res_submit == "retry":
-                    continue
-                else:
-                    sukses_baris = True
-                    break
-
-            is_kosong_1 = (
-                check_exists(d(textContains="KOSONG 1")) or 
-                check_exists(d(descriptionContains="KOSONG 1")) or 
-                check_exists(d.xpath("//*[contains(@text, 'KOSONG 1') or contains(@content-desc, 'KOSONG 1')]"))
-            )
-
-            if is_galat_0 and is_kosong_1:
-                print(f"[KIRIM CHECK] Terdeteksi 'GALAT 0' dan 'KOSONG 1'! Ketuk 'KOSONG 1' -> 'Catatan' -> 'Lihat'...")
-                if check_exists(d(textContains="KOSONG 1")):
-                    d(textContains="KOSONG 1").click()
-                else:
-                    ketuk("KOSONG 1", exact=False, sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-
-                if check_exists(d(textContains="Catatan")):
-                    d(textContains="Catatan").click()
-                else:
-                    ketuk("Catatan", exact=False, sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-
-                # Ketuk "Lihat" menggunakan bounds titik tengah element
-                lihat_bounds = None
-                try:
-                    btn_lihat = d(text="Lihat")
-                    if not btn_lihat.exists():
-                        btn_lihat = d(textContains="Lihat")
-                    if not btn_lihat.exists():
-                        btn_lihat = d(descriptionContains="Lihat")
-
-                    if check_exists(btn_lihat):
-                        info = btn_lihat.info
-                        b = info.get("bounds") if isinstance(info, dict) else None
-                        if b and isinstance(b, dict):
-                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
-                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
-                            lihat_bounds = (cx, cy)
-                            print(f"[SCAN LIHAT] Terdeteksi bounds tombol 'Lihat': [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Ketuk koordinat ({cx}, {cy})")
-                except Exception as e_lh:
-                    print(f"[SCAN LIHAT] Gagal scan bounds tombol Lihat: {e_lh}")
-
-                if lihat_bounds:
-                    d.click(lihat_bounds[0], lihat_bounds[1])
-                    time.sleep(SLEEP_SHORT)
-                else:
-                    ketuk("Lihat", exact=False, sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                print("[CATATAN JUMP] Memproses pengisian field Catatan & Submit...")
-                res_submit = isi_catatan_dan_submit(row, idpel, row_attempt)
-                if res_submit == "retry":
-                    continue
-                else:
-                    sukses_baris = True
-                    break
-
-            # Ketuk teks yang mengandung kata "GALAT"
-            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            # Cek jika muncul kata "Koordinat lokasi meteran" atau "Foto rumah tampak depan"
-            is_galat_koordinat_foto = False
-            try:
-                if (check_exists(d(textContains="Koordinat lokasi meteran")) or 
-                    check_exists(d(descriptionContains="Koordinat lokasi meteran")) or
-                    check_exists(d.xpath("//*[contains(@text, 'Koordinat lokasi meteran') or contains(@content-desc, 'Koordinat lokasi meteran')]")) or
-                    check_exists(d(textContains="Foto rumah tampak depan")) or
-                    check_exists(d(textContains="Foto ruimah tampak depan")) or
-                    check_exists(d(descriptionContains="Foto rumah tampak depan")) or
-                    check_exists(d(descriptionContains="Foto ruimah tampak depan")) or
-                    check_exists(d.xpath("//*[contains(@text, 'tampak depan') or contains(@content-desc, 'tampak depan')]"))):
-                    is_galat_koordinat_foto = True
-            except Exception:
-                pass
-
-            if is_galat_koordinat_foto:
-                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
-                simpan_status_excel(row, "koordinat & foto tidak ada")
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
-            else:
-                print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
-                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-                print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
-                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
@@ -2813,7 +2703,60 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
             
-            
+            # Cek jika modal ringkasan validasi menampilkan "GALAT 0" DAN "KOSONG 0" (form sudah valid & lengkap dari awal)
+            time.sleep(0.5)
+            is_galat_0 = (
+                check_exists(d(textContains="GALAT 0")) or 
+                check_exists(d(descriptionContains="GALAT 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))
+            )
+            is_kosong_0 = (
+                check_exists(d(textContains="KOSONG 0")) or 
+                check_exists(d(descriptionContains="KOSONG 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'KOSONG 0') or contains(@content-desc, 'KOSONG 0')]"))
+            )
+
+            if is_galat_0 and is_kosong_0:
+                print(f"[KIRIM CHECK] [SUKSES BERSIH] Terdeteksi 'GALAT 0' dan 'KOSONG 0' pada modal Kirim pertama! Memproses submit & selesai...")
+                res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+                if res_submit == "retry":
+                    continue
+                else:
+                    sukses_baris = True
+                    break
+
+            # Ketuk teks yang mengandung kata "GALAT"
+            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
+
+            # Cek jika muncul kata "Koordinat lokasi meteran" atau "Foto rumah tampak depan"
+            is_galat_koordinat_foto = False
+            try:
+                if (check_exists(d(textContains="Koordinat lokasi meteran")) or 
+                    check_exists(d(descriptionContains="Koordinat lokasi meteran")) or
+                    check_exists(d.xpath("//*[contains(@text, 'Koordinat lokasi meteran') or contains(@content-desc, 'Koordinat lokasi meteran')]")) or
+                    check_exists(d(textContains="Foto rumah tampak depan")) or
+                    check_exists(d(textContains="Foto ruimah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto rumah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto ruimah tampak depan")) or
+                    check_exists(d.xpath("//*[contains(@text, 'tampak depan') or contains(@content-desc, 'tampak depan')]"))):
+                    is_galat_koordinat_foto = True
+            except Exception:
+                pass
+
+            if is_galat_koordinat_foto:
+                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "koordinat & foto tidak ada")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+            else:
+                print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
+                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+                print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
+                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
 
             #13.B BLOK II
             ketuk_sidebar_toggle()
