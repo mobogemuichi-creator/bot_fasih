@@ -2614,21 +2614,10 @@ def proses_update_reject_nik():
                             radio_found = True
                             break
 
-                # 2. Cek apakah label "Hasil Pendataan" telah terdorong ke atas layar sampai hilang
-                is_hasil_pendataan_hilang = not (
-                    check_exists(d(textContains="Hasil Pendataan")) or 
-                    check_exists(d(textContains="Hasil pendataan")) or
-                    check_exists(d(textContains="104. Hasil pendataan"))
-                )
-
-                if is_hasil_pendataan_hilang and scan_attempt > 1:
-                    print("[RADIO] Label 'Hasil Pendataan' terdorong ke atas hingga hilang. Menggulung/scroll ke atas...")
-                    loop_swipe_statis(delta_y=400, loop=1)
-                    time.sleep(SLEEP_SHORT)
-                else:
-                    print(f"[RADIO] Scroll ke bawah mencari 'Berhasil Didata' (Percobaan {scan_attempt}/{max_scan_attempts})...")
-                    loop_swipe_statis(delta_y=-300, loop=1)
-                    time.sleep(SLEEP_SHORT)
+                # Scroll ke bawah mencari 'Berhasil Didata'
+                print(f"[RADIO] Scroll ke bawah mencari 'Berhasil Didata' (Percobaan {scan_attempt}/{max_scan_attempts})...")
+                loop_swipe_statis(delta_y=-300, loop=1)
+                time.sleep(SLEEP_SHORT)
 
             if not radio_found:
                 print(f"[RADIO CHECK] [SKIP] RadioButton 'Berhasil Didata' belum tercentang setelah scan & ketuk (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
