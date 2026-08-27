@@ -2616,13 +2616,32 @@ def proses_update_reject_nik():
                     ketuk("Catatan", exact=False, sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
 
-                if check_exists(d(text="LIHAT")) or check_exists(d(text="Lihat")):
-                    ketuk("LIHAT", exact=False, sleep_after=SLEEP_SHORT)
-                elif check_exists(d(textContains="Lihat")) or check_exists(d(textContains="LIHAT")):
-                    ketuk("Lihat", exact=False, sleep_after=SLEEP_SHORT)
+                # Ketuk "Lihat" menggunakan bounds titik tengah element
+                lihat_bounds = None
+                try:
+                    btn_lihat = d(text="Lihat")
+                    if not btn_lihat.exists():
+                        btn_lihat = d(textContains="Lihat")
+                    if not btn_lihat.exists():
+                        btn_lihat = d(descriptionContains="Lihat")
+
+                    if check_exists(btn_lihat):
+                        info = btn_lihat.info
+                        b = info.get("bounds") if isinstance(info, dict) else None
+                        if b and isinstance(b, dict):
+                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                            lihat_bounds = (cx, cy)
+                            print(f"[SCAN LIHAT] Terdeteksi bounds tombol 'Lihat': [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Ketuk koordinat ({cx}, {cy})")
+                except Exception as e_lh:
+                    print(f"[SCAN LIHAT] Gagal scan bounds tombol Lihat: {e_lh}")
+
+                if lihat_bounds:
+                    d.click(lihat_bounds[0], lihat_bounds[1])
+                    time.sleep(SLEEP_SHORT)
                 else:
-                    ketuk("LIHAT", exact=False, sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
+                    ketuk("Lihat", exact=False, sleep_after=SLEEP_SHORT)
+                    time.sleep(SLEEP_SHORT)
 
                 print("[CATATAN JUMP] Memproses pengisian field Catatan & Submit...")
                 res_submit = isi_catatan_dan_submit(row, idpel, row_attempt)
