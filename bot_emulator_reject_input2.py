@@ -432,6 +432,23 @@ def kembali_ke_daftar_assignment(max_retry=5):
             print("[RECOVERY] Sudah berada di halaman 'Daftar Assignment'.")
             return True
 
+        # Cek apakah loading screen / progress bar sedang berjalan sebelum percobaan berikutnya
+        is_loading = (
+            check_exists(d(resourceId="id.go.bpsfasih:id/card_progress")) or
+            check_exists(d(className="android.widget.ProgressBar")) or
+            check_exists(d(textContains="Mohon tunggu")) or
+            check_exists(d(textContains="Loading")) or
+            check_exists(d(textContains="Memuat"))
+        )
+        if is_loading:
+            print(f"[RECOVERY] Terdeteksi proses loading / progress bar (Percobaan {i}/{max_retry})! Menunggu loading selesai (timeout 30s)...")
+            tunggu_loading(timeout=30)
+            time.sleep(SLEEP_SHORT)
+            if (check_exists(d(resourceId="id.go.bpsfasih:id/title_toolbar", text="Daftar Assignment")) or 
+                check_exists(d(text="Daftar Assignment"))):
+                print("[RECOVERY] Berhasil kembali ke halaman 'Daftar Assignment' setelah loading selesai.")
+                return True
+
         # Ketuk tombol OK statis (bounds 528, 1691) jika ada modal OK yang menghalangi sebelum BACK
         print(f"[RECOVERY] Mengetuk tombol OK statis (bounds 528, 1691) sebelum BACK...")
         try:
@@ -499,7 +516,117 @@ def kembali_ke_daftar_assignment(max_retry=5):
     except Exception as err:
         print(f"[WARNING] Gagal alur recovery Surveys: {err}")
 
-    return False
+def eksekusi_submit_dan_selesai(row, idpel, row_attempt):
+    print("[SUBMIT] [SUKSES] Mengetuk tombol 'Kirim' kedua di dalam modal...")
+    #20 ketuk tombol "Kirim" kedua di dalam modal
+    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #21 ketuk tombol "Konfirmasi"
+    ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #23 ketuk tombol "Konfirmasi"
+    ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    #24 ketuk tombol "YA" (ulangi jika 'Submit diproses' belum muncul)
+    max_ya_attempts = 5
+    submit_muncul = False
+    for ya_attempt in range(1, max_ya_attempts + 1):
+        print(f"[SUBMIT] Mengetuk tombol 'YA' (Percobaan {ya_attempt}/{max_ya_attempts})...")
+        ketuk("YA", sleep_after=SLEEP_SHORT)
+        time.sleep(SLEEP_MEDIUM)
+
+        is_submit_modal = (
+            check_exists(d(textContains="Submit diproses")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
+            check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
+            check_exists(d(text="OK"))
+        )
+
+        if is_submit_modal:
+            print(f"[SUBMIT] [SUKSES] Modal 'Submit diproses' terdeteksi setelah ketuk 'YA' pada percobaan ke-{ya_attempt}.")
+            submit_muncul = True
+            break
+        else:
+            print(f"[SUBMIT] [RETRY] Modal 'Submit diproses' belum muncul (percobaan ke-{ya_attempt}/{max_ya_attempts}). Mengulangi ketuk 'YA'...")
+            time.sleep(SLEEP_SHORT)
+
+    if not submit_muncul:
+        print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
+
+    #25 ketuk "OK" pada modal Submit diproses (retry 10x & fallback statis bounds 528, 1691)
+    ketuk_ok_submit_diproses(max_attempts=10)
+
+    #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
+    print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
+    is_halaman_upload = False
+    for _ in range(5):
+        if (check_exists(d(textContains="Halaman Upload")) or 
+            check_exists(d(descriptionContains="Halaman Upload")) or 
+            check_exists(d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]"))):
+            is_halaman_upload = True
+            break
+        time.sleep(0.5)
+
+    if is_halaman_upload:
+        print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
+        d.press("back")
+        time.sleep(SLEEP_LONG)
+    else:
+        print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
+
+    #24. Tunggu kembali ke halaman 'Daftar Assignment'
+    sukses_da = tunggu_loading("Daftar Assignment", timeout=15)
+    if not sukses_da:
+        print(f"[WARNING] Teks 'Daftar Assignment' tidak terdeteksi setelah 15 detik untuk baris {row} (IDPEL: {idpel}).")
+        print(f"[RECOVERY] Mengurungkan simpan_status_excel, mengeksekusi kembali_ke_daftar_assignment()...")
+        kembali_ke_daftar_assignment()
+        if row_attempt < 3:
+            print(f"[RETRY BARIS] Mengulangi pemrosesan baris {row} ({idpel}) dari awal (percobaan ke-{row_attempt + 1})...")
+            return "retry"
+        else:
+            print(f"[RETRY GAGAL] Sudah mencoba 3x untuk baris {row} ({idpel}). Melanjutkan ke baris berikutnya.")
+            return "next"
+    else:
+        #25 Simpan status di Excel 'SUKSES DIUPDATE' HANYA jika sukses_da True
+        simpan_status_excel(row, "SUKSES DIUPDATE")
+        return "sukses"
+
+
+def isi_catatan_dan_submit(row, idpel, row_attempt):
+    # Catatan
+    input_textbox(label_text="Catatan", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+
+    # 18 ketuk tombol "Kirim" pertama
+    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+    time.sleep(SLEEP_SHORT)
+
+    # 19 ketuk tombol "YA" (jika muncul konfirmasi YA)
+    if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
+        ketuk("YA", sleep_after=SLEEP_SHORT)
+        time.sleep(SLEEP_SHORT)
+
+    # Cek apakah modal ringkasan validasi menampilkan 'GALAT 0' (validasi error = 0)
+    is_galat_0 = False
+    print("[SUBMIT] Memeriksa status 'GALAT 0' pada modal ringkasan validasi...")
+    for galat_attempt in range(15):
+        if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
+            check_exists(d(textContains="GALAT 0")) or 
+            check_exists(d(descriptionContains="GALAT 0")) or 
+            check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
+            is_galat_0 = True
+            break
+        time.sleep(0.3)
+
+    if not is_galat_0:
+        print(f"[SUBMIT] [SKIP] Teks 'GALAT 0' tidak terdeteksi (terdapat error validasi) untuk IDPEL {idpel}. Menyimpan status Excel 'koordinat & foto tidak ada' & berpindah ke baris berikutnya...")
+        simpan_status_excel(row, "koordinat & foto tidak ada")
+        kembali_ke_daftar_assignment()
+        return "next"
+
+    return eksekusi_submit_dan_selesai(row, idpel, row_attempt)
 
 
 def cari_dan_ketuk_search_box(idpel):
@@ -1489,6 +1616,97 @@ def baca_nilai_field_nik(d_dev):
     return val_existing
 
 
+def baca_nilai_field_no_telp(d_dev):
+    """Membaca nilai teks saat ini pada field '203. Nomor telepon'"""
+    val_existing = ""
+    try:
+        label = d_dev(textContains="203. Nomor telepon")
+        if not check_exists(label):
+            label = d_dev(descriptionContains="203. Nomor telepon")
+        if not check_exists(label):
+            label = d_dev(textContains="Nomor telepon")
+
+        if check_exists(label):
+            input_el = label.down(className="android.widget.EditText")
+            if not check_exists(input_el):
+                input_el = label.sibling(className="android.widget.EditText")
+            if check_exists(input_el):
+                val_existing = (input_el.get_text() or "").strip()
+
+        if not val_existing:
+            xp = "//*[contains(@text, '203.') or contains(@content-desc, '203.') or contains(@text, 'Nomor telepon') or contains(@content-desc, 'Nomor telepon')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                val_existing = (d_dev.xpath(xp).info.get('text', '') or "").strip()
+    except Exception as e:
+        print(f"[SCAN NO TELP] Exception saat membaca field No Telp: {e}")
+
+    return val_existing
+
+
+def isi_dan_verifikasi_no_telp(d_dev, target_val="-", max_attempts=5):
+    """
+    Memasukkan dan memverifikasi pengisian field '203. Nomor telepon':
+    - Scan apakah isinya sudah '-' atau belum.
+    - Jika belum, ulangi dengan mendeteksi bounds EditText, mengklik titik tengah bounds (cx, cy), dan menginput '-'.
+    """
+    print(f"[INPUT NO TELP] Memeriksa apakah field '203. Nomor telepon' sudah terisi '{target_val}'...")
+    val_existing = baca_nilai_field_no_telp(d_dev)
+    if val_existing == target_val or "-" in val_existing:
+        print(f"[INPUT NO TELP] [SUKSES] Field '203. Nomor telepon' sudah terisi '{val_existing}'.")
+        return True
+
+    for attempt in range(1, max_attempts + 1):
+        print(f"[INPUT NO TELP] Pengisian '203. Nomor telepon' (Percobaan {attempt}/{max_attempts})...")
+        
+        # 1. Coba input via input_textbox standar
+        input_textbox(label_text="203. Nomor telepon", value=target_val, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+        time.sleep(0.5)
+
+        val_now = baca_nilai_field_no_telp(d_dev)
+        if val_now == target_val or "-" in val_now:
+            print(f"[INPUT NO TELP] [SUKSES VERIFIKASI] Field '203. Nomor telepon' terisi '{val_now}' pada percobaan ke-{attempt}.")
+            return True
+
+        # 2. Jika belum terisi '-', gunakan bounds EditText secara presisi
+        print(f"[INPUT NO TELP] [RETRY] Field belum terisi '{target_val}' (saat ini: '{val_now}'). Menggunakan scan bounds EditText...")
+        tb_bounds = None
+        try:
+            xp = "//*[contains(@text, '203.') or contains(@content-desc, '203.') or contains(@text, 'Nomor telepon') or contains(@content-desc, 'Nomor telepon')]/following::android.widget.EditText[1]"
+            if check_exists(d_dev.xpath(xp)):
+                info = d_dev.xpath(xp).info
+                b = info.get("bounds") if isinstance(info, dict) else None
+                if b and isinstance(b, dict):
+                    cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                    cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                    tb_bounds = (cx, cy)
+                    print(f"[INPUT NO TELP] Bounds EditText terdeteksi: [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik Tengah ({cx}, {cy})")
+        except Exception as err:
+            print(f"[INPUT NO TELP] Error scan bounds EditText: {err}")
+
+        if tb_bounds:
+            d_dev.click(tb_bounds[0], tb_bounds[1])
+            time.sleep(0.3)
+            try:
+                if hasattr(d_dev, 'send_keys'):
+                    d_dev.send_keys(target_val)
+                else:
+                    d_dev.shell(f"input text {target_val}")
+            except Exception:
+                try:
+                    d_dev.shell(f"input text {target_val}")
+                except Exception:
+                    pass
+            time.sleep(0.5)
+
+        val_final = baca_nilai_field_no_telp(d_dev)
+        if val_final == target_val or "-" in val_final:
+            print(f"[INPUT NO TELP] [SUKSES VERIFIKASI BOUNDS] Field '203. Nomor telepon' terisi '{val_final}'.")
+            return True
+
+    print(f"[WARNING] Field '203. Nomor telepon' belum dapat diverifikasi '{target_val}' setelah {max_attempts}x percobaan.")
+    return False
+
+
 def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     """
     Fungsi untuk men-scroll dan mengambil data alamat (Provinsi, Kabupaten, Kecamatan, Desa/Kelurahan, Alamat)
@@ -1502,8 +1720,23 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         Alamat: TURUS LUMBUNG LSTR
     """
     print("\n[BLOK I] Men-scroll ke bawah secara dinamis hingga data alamat terlihat...")
+    info_alamat = {
+        "Provinsi": "",
+        "Kabupaten": "",
+        "Kecamatan": "",
+        "Desa/Kelurahan": "",
+        "Alamat": ""
+    }
     max_swipes = 20
     for swipe_idx in range(1, max_swipes + 1):
+        if (check_exists(d(textContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or 
+            check_exists(d(descriptionContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or
+            check_exists(d(textContains="TIDAK DAPAT TERHUBUNG")) or
+            check_exists(d.xpath("//*[contains(@text, 'TERHUBUNG KE SERVER') or contains(@content-desc, 'TERHUBUNG KE SERVER')]"))):
+            print(f"[BLOK I] [WARNING] Terdeteksi 'TIDAK DAPAT TERHUBUNG KE SERVER' pada swipe ke-{swipe_idx}!")
+            info_alamat["server_error"] = True
+            return info_alamat
+
         if d(textContains="103.").exists() or d(textContains="Nama pada ID Pelanggan").exists():
             print(f"[BLOK I] Teks alamat ditemukan di layar (pemeriksaan ke-{swipe_idx}).")
             break
@@ -1511,11 +1744,11 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
         print(f"[BLOK I] Performing dynamic swipe {swipe_idx} (540, 800 -> 540, 155)...")
         try:
             swipe_aman(540, 700, 540, 400, duration=0.1)
-            time.sleep(0.2)
+            time.sleep(0.05)
         except Exception as scroll_err:
             print(f"[WARNING] Gagal swipe ke bawah pada percobaan {swipe_idx}: {scroll_err}")
             break
-    time.sleep(0.2)
+    time.sleep(0.05)
 
     # Sistem pencarian & verifikasi label "a. Provinsi"
     def cek_label_provinsi():
@@ -1546,13 +1779,6 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
 
     # === AMBIL DATA ALAMAT & SIMPAN KE temp_alamat.txt ===
     print("[BLOK I] Mengambil data alamat dari screen...")
-    info_alamat = {
-        "Provinsi": "",
-        "Kabupaten": "",
-        "Kecamatan": "",
-        "Desa/Kelurahan": "",
-        "Alamat": ""
-    }
     
     mapping_keys = [
         ("Provinsi", ["a. Provinsi", "Provinsi"]),
@@ -2178,12 +2404,12 @@ def ketuk_tombol_increment():
         raise Exception("Tombol 'Increment' tidak ditemukan.")
 
 
-def ketuk_ok_submit_diproses(max_attempts=5):
+def ketuk_ok_submit_diproses(max_attempts=10):
     """
     Memeriksa dan mengetuk tombol 'OK' pada modal 'Submit diproses'.
     Jika setelah diketuk modal masih tetap muncul ('Submit diproses' masih ada di layar),
-    akan mengulang pengetukan hingga `max_attempts` kali (default 5).
-    Jika setelah 5x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
+    akan mengulang pengetukan hingga `max_attempts` kali (default 10).
+    Jika setelah 10x masih tidak bisa, menggunakan fallback pengetukan statis pada koordinat bounds (528, 1691).
     """
     print("\n[SUBMIT DIPROSES] Memeriksa modal 'Submit diproses'...")
     
@@ -2353,8 +2579,8 @@ def proses_update_reject_nik():
             time.sleep(SLEEP_MEDIUM)
 
             #7 ketuk tombol 'YA'
-            ketuk("YA", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
+            ketuk("YA", sleep_after=SLEEP_LONG)
+            time.sleep(SLEEP_LONG)
 
             # Cek jika muncul text/dialog "Perhatian"
             if check_exists(d(text="Perhatian")) or check_exists(d(textContains="Perhatian")) or check_exists(d(resourceId="id.go.bpsfasih:id/judul_bottomDialog")):
@@ -2365,7 +2591,7 @@ def proses_update_reject_nik():
                     ketuk("DOWNLOAD SEKARANG", sleep_after=SLEEP_SHORT)
                 print("[LOADING] Menunggu proses download / loading selesai...")
                 tunggu_loading(timeout=30)
-                time.sleep(SLEEP_SHORT)
+                time.sleep(SLEEP_LONG)
 
                 # Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai
                 print("[RETRY] Mengulangi ketuk 'Aksi' -> 'BUKA' -> 'YA' setelah download selesai...")
@@ -2374,11 +2600,56 @@ def proses_update_reject_nik():
                 ketuk("BUKA", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_MEDIUM)
                 ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
+                time.sleep(SLEEP_LONG)
+
+            # Scan halaman berulang kali sampai ketemu label "Mulai Wawancara" (timeout 30 detik)
+            print("[SCAN] Menunggu label 'Mulai Wawancara' muncul di layar (timeout 30s)...")
+            is_mulai_wawancara = False
+            t_end = time.time() + 30
+            while time.time() < t_end:
+                try:
+                    if (check_exists(d(textContains="Mulai Wawancara")) or 
+                        check_exists(d(descriptionContains="Mulai Wawancara")) or
+                        check_exists(d.xpath("//*[contains(@text, 'Mulai Wawancara') or contains(@content-desc, 'Mulai Wawancara')]"))):
+                        is_mulai_wawancara = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.3)
+
+            if not is_mulai_wawancara:
+                print(f"[TIMEOUT] Label 'Mulai Wawancara' tidak terdeteksi setelah 30 detik untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Error: Timeout Mulai Wawancara")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+
+            print("[SCAN] [SUKSES] Label 'Mulai Wawancara' terdeteksi! Melanjutkan ke proses berikutnya...")
+
+            
 
             time.sleep(SLEEP_LONG)
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
+
+            # Cek jika terdeteksi label "TIDAK DAPAT TERHUBUNG KE SERVER" saat scroll/ambil data alamat
+            is_server_error = False
+            try:
+                if (alamat_dict and alamat_dict.get("server_error")) or \
+                   check_exists(d(textContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or \
+                   check_exists(d(descriptionContains="TIDAK DAPAT TERHUBUNG KE SERVER")) or \
+                   check_exists(d(textContains="TIDAK DAPAT TERHUBUNG")) or \
+                   check_exists(d.xpath("//*[contains(@text, 'TERHUBUNG KE SERVER') or contains(@content-desc, 'TERHUBUNG KE SERVER')]")):
+                    is_server_error = True
+            except Exception:
+                pass
+
+            if is_server_error:
+                print(f"[BLOK I] [SKIP] Terdeteksi label 'TIDAK DAPAT TERHUBUNG KE SERVER' untuk IDPEL {idpel}. Menyimpan status 'Data Belum Cek IDPEL/NOMETER' & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "Data Belum Cek IDPEL/NOMETER")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
 
             # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
             is_alamat_null = False
@@ -2407,85 +2678,184 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.5)
-            time.sleep(SLEEP_LONG)
+            # Scan & scroll ke bawah sampai terlihat text "Berhasil Didata" dan verifikasi centang via bounds
+            print("[RADIO] Memulai scan & scroll untuk mencari 'Berhasil Didata'...")
+            radio_found = False
+            max_scan_attempts = 10
 
-            # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
-            radio_success = False
-            if cek_radio_button_tercentang("1. Berhasil didata", exact=False):
-                print("[RADIO CHECK] RadioButton '1. Berhasil didata' sudah tercentang.")
-                radio_success = True
-            else:
-                print("[RADIO CHECK] RadioButton '1. Berhasil didata' BELUM tercentang. Memulai pengetukan...")
-                max_radio_attempts = 5
-                for r_attempt in range(1, max_radio_attempts + 1):
-                    clicked = False
+            for scan_attempt in range(1, max_scan_attempts + 1):
+                # Cek dulu apakah sudah tercentang dari awal (menggunakan beda XML child TextView/focused)
+                if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                    print("[RADIO] [SUKSES] RadioButton 'Berhasil Didata' sudah tercentang!")
+                    radio_found = True
+                    break
 
-                    # Strategi 1: Kalkulasi koordinat dinamis dari parent/label bounds
+                # 1. Scan elemen teks "Berhasil Didata" atau "1. Berhasil didata" (abaikan node dummy width < 50px)
+                target_bounds = None
+                for pattern in ["Berhasil Didata", "Berhasil didata", "1. Berhasil didata"]:
                     try:
-                        print("strategi 1")
-                        label_el = None
-                        for pattern in ["1. Berhasil didata", "1.  Berhasil didata", "Berhasil didata"]:
-                            elements = d.xpath(f"//*[contains(@text, '{pattern}')]").all()
-                            for el in elements:
-                                bounds_str = el.attrib.get('bounds')
-                                import re
-                                pts = [int(x) for x in re.findall(r'\d+', bounds_str)]
-                                if len(pts) == 4:
-                                    x1, y1, x2, y2 = pts
-                                    if (x2 - x1) > 50:
-                                        label_el = el
-                                        break
-                            if label_el:
-                                break
-
-                        if label_el:
-                            label_bounds_str = label_el.attrib.get('bounds')
+                        elements = d.xpath(f"//*[contains(@text, '{pattern}') or contains(@content-desc, '{pattern}')]").all()
+                        for el in elements:
+                            attrib = el.attrib if hasattr(el, 'attrib') else {}
+                            bounds_str = attrib.get('bounds', '')
                             import re
-                            l_pts = [int(x) for x in re.findall(r'\d+', label_bounds_str)]
-                            label_left, label_top, label_right, label_bottom = l_pts
+                            pts = [int(x) for x in re.findall(r'\d+', bounds_str)]
+                            if len(pts) == 4:
+                                x1, y1, x2, y2 = pts
+                                width = x2 - x1
+                                height = y2 - y1
+                                el_tag = attrib.get('class', 'node')
+                                el_text = attrib.get('text', '') or attrib.get('content-desc', '')
+                                
+                                if width < 50:
+                                    print(f"[SCAN NODE] [DIABAIKAN] Class: {el_tag} | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px < 50px)")
+                                else:
+                                    print(f"[SCAN NODE] [DIPILIH] Class: {el_tag} | Text: '{el_text}' | Bounds: [{x1},{y1}][{x2},{y2}] (Width: {width}px >= 50px)")
+                                    target_bounds = {"left": x1, "top": y1, "right": x2, "bottom": y2, "text": el_text, "tag": el_tag}
+                                    break
+                        if target_bounds:
+                            break
+                    except Exception as err:
+                        print(f"[SCAN NODE ERROR] Gagal scan xpath pattern '{pattern}': {err}")
 
-                            label_text = label_el.text
-                            parent = d.xpath(f"//*[contains(@text, '{label_text}')]/..")
+                if target_bounds:
+                    b = target_bounds
+                    cx = (b["left"] + b["right"]) // 2
+                    cy = (b["top"] + b["bottom"]) // 2
+                    print(f"[KLIK TARGET] Tag: <{b['tag']}> | Text: '{b['text']}' | Bounds: [{b['left']},{b['top']}][{b['right']},{b['bottom']}]")
+                    print(f"[KLIK TARGET] Mengetuk Titik Tengah Koordinat: ({cx}, {cy})...")
+                    
+                    # Ketuk titik tengah label hasil scan
+                    d.click(cx, cy)
+                    time.sleep(0.5)
 
-                            if parent.exists:
-                                parent_bounds = parent.all()[0].attrib.get('bounds')
-                                p_pts = [int(x) for x in re.findall(r'\d+', parent_bounds)]
-                                parent_left, parent_top, parent_right, parent_bottom = p_pts
-
-                                click_x = parent_left + (label_left - parent_left) // 2
-                                click_y = label_top + (label_bottom - label_top) // 2
-
-                                print(f"[KLIK] Parent Left: {parent_left}, Label Left: {label_left}")
-                                print(f"[KLIK] Mengklik koordinat dinamis radio button: ({click_x}, {click_y})")
-                                d.click(click_x, click_y)
-                                time.sleep(SLEEP_SHORT)
-                                clicked = True
-                    except Exception as click_err:
-                        print(f"[WARNING] Percobaan klik koordinat dinamis gagal: {click_err}")
-
-                    if not clicked:
-                        print(f"[WARNING] Strategi 1 klik gagal pada percobaan ke-{r_attempt}.")
-
-                    # Verifikasi apakah sudah tercentang
-                    time.sleep(0.2)
-                    if cek_radio_button_tercentang("1. Berhasil didata", exact=True):
-                        print(f"[RADIO SUCCESS] Berhasil memverifikasi '1. Berhasil didata' tercentang pada percobaan ke-{r_attempt}.")
-                        radio_success = True
+                    # Pendeteksi: Verifikasi apakah ketuk bounds berhasil mengubah status ke TERCENTANG
+                    if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                        print(f"[VERIFIKASI] [SUKSES] Ketuk koordinat ({cx}, {cy}) BERHASIL! Status RadioButton 'Berhasil Didata' kini TERCENTANG.")
+                        radio_found = True
                         break
-                    print(f"[RETRY RADIO] '1. Berhasil didata' belum tercentang (percobaan ke-{r_attempt}/{max_radio_attempts}). Mengulangi...")
-                    time.sleep(SLEEP_SHORT)
-                    loop_swipe_statis(delta_y=-200, loop=1)
-                    time.sleep(SLEEP_SHORT)
+                    else:
+                        radio_x = max(20, b["left"] - 48)
+                        print(f"[VERIFIKASI] [GAGAL] Ketuk koordinat ({cx}, {cy}) belum memicu centang.")
+                        print(f"[FALLBACK] Mencoba ketuk lingkaran RadioButton di offset X: {radio_x}, Y: {cy}...")
+                        d.click(radio_x, cy)
+                        time.sleep(0.5)
+                        if cek_radio_button_tercentang("Berhasil didata", exact=False):
+                            print(f"[VERIFIKASI] [SUKSES] Ketuk offset lingkaran RadioButton ({radio_x}, {cy}) BERHASIL! Status RadioButton kini TERCENTANG.")
+                            radio_found = True
+                            break
 
-            if not radio_success:
-                print(f"[RADIO CHECK] [SKIP] RadioButton '1. Berhasil didata' belum tercentang setelah {max_radio_attempts}x percobaan (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
+                # Scroll ke bawah mencari 'Berhasil Didata'
+                print(f"[RADIO] Scroll ke bawah mencari 'Berhasil Didata' (Percobaan {scan_attempt}/{max_scan_attempts})...")
+                loop_swipe_statis(delta_y=-300, loop=1)
+                time.sleep(SLEEP_SHORT)
+
+            if not radio_found:
+                print(f"[RADIO CHECK] [SKIP] RadioButton 'Berhasil Didata' belum tercentang setelah scan & ketuk (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error : RadioButton 1. Berhasil didata tidak tercentang")
                 kembali_ke_daftar_assignment()
                 sukses_baris = True
                 break
             
-            
+            # Ketuk tombol Kirim (dan ketuk ulang jika "Mulai Wawancara" masih terdeteksi)
+            max_kirim_attempts = 5
+            for kirim_attempt in range(1, max_kirim_attempts + 1):
+                print(f"[SCAN KIRIM] Memindai posisi tombol 'Kirim' menggunakan bounds (Percobaan {kirim_attempt}/{max_kirim_attempts})...")
+                kirim_bounds = None
+                try:
+                    btn_kirim = d(className="android.widget.Button", text="Kirim")
+                    if not btn_kirim.exists():
+                        btn_kirim = d(text="Kirim", clickable=True)
+                    if not btn_kirim.exists():
+                        btn_kirim = d(text="Kirim")
+
+                    if check_exists(btn_kirim):
+                        info = btn_kirim.info
+                        b = info.get("bounds") if isinstance(info, dict) else None
+                        if b and isinstance(b, dict):
+                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                            kirim_bounds = (cx, cy)
+                            print(f"[SCAN KIRIM] Posisi tombol 'Kirim' terdeteksi pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Titik tengah ({cx}, {cy})")
+                except Exception as e:
+                    print(f"[SCAN KIRIM] Gagal memindai bounds tombol Kirim: {e}")
+
+                if kirim_bounds:
+                    d.click(kirim_bounds[0], kirim_bounds[1])
+                    time.sleep(SLEEP_SHORT)
+                else:
+                    ketuk("Kirim", sleep_after=SLEEP_SHORT)
+                    time.sleep(SLEEP_SHORT)
+
+                # Scan untuk memverifikasi apakah "Mulai Wawancara" masih terdeteksi di layar
+                time.sleep(1.0)
+                still_mulai_wawancara = (
+                    check_exists(d(textContains="Mulai Wawancara")) or 
+                    check_exists(d(descriptionContains="Mulai Wawancara")) or
+                    check_exists(d.xpath("//*[contains(@text, 'Mulai Wawancara') or contains(@content-desc, 'Mulai Wawancara')]"))
+                )
+
+                if still_mulai_wawancara:
+                    print(f"[RETRY KIRIM] 'Mulai Wawancara' masih terdeteksi di layar setelah ketuk 'Kirim' (Percobaan {kirim_attempt}/{max_kirim_attempts}). Mengulangi ketuk 'Kirim'...")
+                    time.sleep(SLEEP_SHORT)
+                else:
+                    print(f"[RETRY KIRIM] [SUKSES] 'Mulai Wawancara' sudah tidak terdeteksi (halaman berpindah/modal terbuka) pada percobaan ke-{kirim_attempt}.")
+                    break
+
+            # Cek jika modal ringkasan validasi menampilkan "GALAT 0" DAN "KOSONG 0" (form sudah valid & lengkap dari awal)
+            time.sleep(0.5)
+            is_galat_0 = (
+                check_exists(d(textContains="GALAT 0")) or 
+                check_exists(d(descriptionContains="GALAT 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))
+            )
+            is_kosong_0 = (
+                check_exists(d(textContains="KOSONG 0")) or 
+                check_exists(d(descriptionContains="KOSONG 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'KOSONG 0') or contains(@content-desc, 'KOSONG 0')]"))
+            )
+
+            if is_galat_0 and is_kosong_0:
+                print(f"[KIRIM CHECK] [SUKSES BERSIH] Terdeteksi 'GALAT 0' dan 'KOSONG 0' pada modal Kirim pertama! Memproses submit & selesai...")
+                res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+                if res_submit == "retry":
+                    continue
+                else:
+                    sukses_baris = True
+                    break
+
+            # Ketuk teks yang mengandung kata "GALAT"
+            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+            time.sleep(SLEEP_SHORT)
+
+            # Cek jika muncul kata "Koordinat lokasi meteran" atau "Foto rumah tampak depan"
+            is_galat_koordinat_foto = False
+            try:
+                if (check_exists(d(textContains="Koordinat lokasi meteran")) or 
+                    check_exists(d(descriptionContains="Koordinat lokasi meteran")) or
+                    check_exists(d.xpath("//*[contains(@text, 'Koordinat lokasi meteran') or contains(@content-desc, 'Koordinat lokasi meteran')]")) or
+                    check_exists(d(textContains="Foto rumah tampak depan")) or
+                    check_exists(d(textContains="Foto ruimah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto rumah tampak depan")) or
+                    check_exists(d(descriptionContains="Foto ruimah tampak depan")) or
+                    check_exists(d.xpath("//*[contains(@text, 'tampak depan') or contains(@content-desc, 'tampak depan')]"))):
+                    is_galat_koordinat_foto = True
+            except Exception:
+                pass
+
+            if is_galat_koordinat_foto:
+                print(f"[GALAT CHECK] [SKIP] Terdeteksi 'Koordinat lokasi meteran' / 'Foto rumah tampak depan' pada GALAT untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
+                simpan_status_excel(row, "koordinat & foto tidak ada")
+                kembali_ke_daftar_assignment()
+                sukses_baris = True
+                break
+            else:
+                print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
+                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+                print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
+                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
 
             #13.B BLOK II
             ketuk_sidebar_toggle()
@@ -2612,7 +2982,7 @@ def proses_update_reject_nik():
                 break
 
             loop_swipe_dinamis(delta_y=-700, target_text="204. Status kepemilikan")
-            input_textbox(label_text="203. Nomor telepon", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
+            isi_dan_verifikasi_no_telp(d, target_val='-', max_attempts=5)
             
             # Pengecekan status RadioButton: Ketuk '1. Milik sendiri' HANYA jika belum tercentang
             if cek_radio_button_tercentang("1. Milik sendiri", exact=False):
@@ -2699,112 +3069,11 @@ def proses_update_reject_nik():
             pilih_blok("IV")
             time.sleep(SLEEP_LONG)
 
-            #Catatan
-            input_textbox(label_text="Catatan", value='-', bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
-
-            #18 ketuk tombol "Kirim" pertama
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #19 ketuk tombol "YA" (jika muncul konfirmasi YA)
-            if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
-                ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_SHORT)
-
-            # Cek apakah modal ringkasan validasi menampilkan 'GALAT 0' (validasi error = 0)
-            is_galat_0 = False
-            print("[SUBMIT] Memeriksa status 'GALAT 0' pada modal ringkasan validasi...")
-            for galat_attempt in range(15):
-                if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
-                    check_exists(d(textContains="GALAT 0")) or 
-                    check_exists(d(descriptionContains="GALAT 0")) or 
-                    check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
-                    is_galat_0 = True
-                    break
-                time.sleep(0.3)
-
-            if not is_galat_0:
-                print(f"[SUBMIT] [SKIP] Teks 'GALAT 0' tidak terdeteksi (terdapat error validasi) untuk IDPEL {idpel}. Menyimpan status Excel 'koordinat & foto tidak ada' & berpindah ke baris berikutnya...")
-                simpan_status_excel(row, "koordinat & foto tidak ada")
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
-
-            print("[SUBMIT] [SUKSES] Terdeteksi 'GALAT 0'! Mengetuk tombol 'Kirim' kedua...")
-            #20 ketuk tombol "Kirim" kedua di dalam modal
-            ketuk("Kirim", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #21 ketuk tombol "Konfirmasi"
-            ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #23 ketuk tombol "Konfirmasi"
-            ketuk("Konfirmasi", sleep_after=SLEEP_SHORT)
-            time.sleep(SLEEP_SHORT)
-
-            #24 ketuk tombol "YA" (ulangi jika 'Submit diproses' belum muncul)
-            max_ya_attempts = 5
-            submit_muncul = False
-            for ya_attempt in range(1, max_ya_attempts + 1):
-                print(f"[SUBMIT] Mengetuk tombol 'YA' (Percobaan {ya_attempt}/{max_ya_attempts})...")
-                ketuk("YA", sleep_after=SLEEP_SHORT)
-                time.sleep(SLEEP_MEDIUM)
-
-                is_submit_modal = (
-                    check_exists(d(textContains="Submit diproses")) or
-                    check_exists(d(resourceId="id.go.bpsfasih:id/tv_submit_progress_title")) or
-                    check_exists(d(resourceId="id.go.bpsfasih:id/btn_submit_progress_close")) or
-                    check_exists(d(text="OK"))
-                )
-
-                if is_submit_modal:
-                    print(f"[SUBMIT] [SUKSES] Modal 'Submit diproses' terdeteksi setelah ketuk 'YA' pada percobaan ke-{ya_attempt}.")
-                    submit_muncul = True
-                    break
-                else:
-                    print(f"[SUBMIT] [RETRY] Modal 'Submit diproses' belum muncul (percobaan ke-{ya_attempt}/{max_ya_attempts}). Mengulangi ketuk 'YA'...")
-                    time.sleep(SLEEP_SHORT)
-
-            if not submit_muncul:
-                print(f"[WARNING] Modal 'Submit diproses' tetap tidak terdeteksi setelah {max_ya_attempts}x mengetuk 'YA'. Memeriksa modal secara langsung...")
-
-            #25 ketuk "OK" pada modal Submit diproses (retry 5x & fallback statis bounds 528, 1691)
-            ketuk_ok_submit_diproses(max_attempts=5)
-
-            #25 Scan teks "Halaman Upload" -> jika muncul maka tekan tombol "BACK" pada emulator
-            print("[EMULATOR] Memeriksa apakah teks 'Halaman Upload' sudah muncul di layar...")
-            is_halaman_upload = False
-            for _ in range(5):
-                if (check_exists(d(textContains="Halaman Upload")) or 
-                    check_exists(d(descriptionContains="Halaman Upload")) or 
-                    check_exists(d.xpath("//*[contains(@text, 'Halaman Upload') or contains(@content-desc, 'Halaman Upload')]"))):
-                    is_halaman_upload = True
-                    break
-                time.sleep(0.5)
-
-            if is_halaman_upload:
-                print("[EMULATOR] Teks 'Halaman Upload' terdeteksi di layar! Menekan tombol Back pada emulator...")
-                d.press("back")
-                time.sleep(SLEEP_LONG)
+            # Catatan & Submit
+            res_submit = isi_catatan_dan_submit(row, idpel, row_attempt)
+            if res_submit == "retry":
+                continue
             else:
-                print("[EMULATOR] Teks 'Halaman Upload' tidak terdeteksi di layar.")
-
-            #24. Tunggu kembali ke halaman 'Daftar Assignment'
-            sukses_da = tunggu_loading("Daftar Assignment", timeout=15)
-            if not sukses_da:
-                print(f"[WARNING] Teks 'Daftar Assignment' tidak terdeteksi setelah 15 detik untuk baris {row} (IDPEL: {idpel}).")
-                print(f"[RECOVERY] Mengurungkan simpan_status_excel, mengeksekusi kembali_ke_daftar_assignment()...")
-                kembali_ke_daftar_assignment()
-                if row_attempt < 3:
-                    print(f"[RETRY BARIS] Mengulangi pemrosesan baris {row} ({idpel}) dari awal (percobaan ke-{row_attempt + 1})...")
-                    continue
-                else:
-                    print(f"[RETRY GAGAL] Sudah mencoba 3x untuk baris {row} ({idpel}). Melanjutkan ke baris berikutnya.")
-                    break
-            else:
-                #25 Simpan status di Excel 'SUKSES DIUPDATE' HANYA jika sukses_da True
-                simpan_status_excel(row, "SUKSES DIUPDATE")
                 sukses_baris = True
                 break
 
