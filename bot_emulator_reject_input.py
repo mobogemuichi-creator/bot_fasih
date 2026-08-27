@@ -2486,79 +2486,55 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            loop_swipe_dinamis(delta_y=-400, target_text="105. Koordinat lokasi meteran", duration=0.5)
-            time.sleep(SLEEP_LONG)
+            # Scan & scroll ke bawah sampai terlihat text "Berhasil Didata"
+            print("[RADIO] Memulai scan & scroll untuk mencari 'Berhasil Didata'...")
+            radio_found = False
+            max_scan_attempts = 10
 
-            # Pengecekan status RadioButton: Ketuk '1. Berhasil didata' HANYA jika belum tercentang
-            radio_success = False
-            if cek_radio_button_tercentang("1. Berhasil didata", exact=False):
-                print("[RADIO CHECK] RadioButton '1. Berhasil didata' sudah tercentang.")
-                radio_success = True
-            else:
-                print("[RADIO CHECK] RadioButton '1. Berhasil didata' BELUM tercentang. Memulai pengetukan...")
-                max_radio_attempts = 5
-                for r_attempt in range(1, max_radio_attempts + 1):
-                    clicked = False
-
-                    # Strategi 1: Kalkulasi koordinat dinamis dari parent/label bounds
+            for scan_attempt in range(1, max_scan_attempts + 1):
+                # 1. Cek apakah teks "Berhasil Didata" atau "Berhasil didata" terlihat di layar
+                target_el = None
+                for pattern in ["Berhasil Didata", "Berhasil didata", "1. Berhasil didata"]:
                     try:
-                        print("strategi 1")
-                        label_el = None
-                        for pattern in ["1. Berhasil didata", "1.  Berhasil didata", "Berhasil didata"]:
-                            elements = d.xpath(f"//*[contains(@text, '{pattern}')]").all()
-                            for el in elements:
-                                bounds_str = el.attrib.get('bounds')
-                                import re
-                                pts = [int(x) for x in re.findall(r'\d+', bounds_str)]
-                                if len(pts) == 4:
-                                    x1, y1, x2, y2 = pts
-                                    if (x2 - x1) > 50:
-                                        label_el = el
-                                        break
-                            if label_el:
-                                break
+                        el = d(textContains=pattern)
+                        if not el.exists():
+                            el = d(descriptionContains=pattern)
+                        if el.exists():
+                            target_el = el
+                            break
+                    except Exception:
+                        pass
 
-                        if label_el:
-                            label_bounds_str = label_el.attrib.get('bounds')
-                            import re
-                            l_pts = [int(x) for x in re.findall(r'\d+', label_bounds_str)]
-                            label_left, label_top, label_right, label_bottom = l_pts
-
-                            label_text = label_el.text
-                            parent = d.xpath(f"//*[contains(@text, '{label_text}')]/..")
-
-                            if parent.exists:
-                                parent_bounds = parent.all()[0].attrib.get('bounds')
-                                p_pts = [int(x) for x in re.findall(r'\d+', parent_bounds)]
-                                parent_left, parent_top, parent_right, parent_bottom = p_pts
-
-                                click_x = parent_left + (label_left - parent_left) // 2
-                                click_y = label_top + (label_bottom - label_top) // 2
-
-                                print(f"[KLIK] Parent Left: {parent_left}, Label Left: {label_left}")
-                                print(f"[KLIK] Mengklik koordinat dinamis radio button: ({click_x}, {click_y})")
-                                d.click(click_x, click_y)
-                                time.sleep(SLEEP_SHORT)
-                                clicked = True
-                    except Exception as click_err:
-                        print(f"[WARNING] Percobaan klik koordinat dinamis gagal: {click_err}")
-
-                    if not clicked:
-                        print(f"[WARNING] Strategi 1 klik gagal pada percobaan ke-{r_attempt}.")
-
-                    # Verifikasi apakah sudah tercentang
-                    time.sleep(0.2)
-                    if cek_radio_button_tercentang("1. Berhasil didata", exact=True):
-                        print(f"[RADIO SUCCESS] Berhasil memverifikasi '1. Berhasil didata' tercentang pada percobaan ke-{r_attempt}.")
-                        radio_success = True
+                if target_el and check_exists(target_el):
+                    info = target_el.info
+                    b = info.get("bounds") if isinstance(info, dict) else None
+                    if b and isinstance(b, dict):
+                        cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                        cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                        print(f"[RADIO] Terlihat 'Berhasil Didata' pada bounds [{b.get('left')},{b.get('top')}][{b.get('right')},{b.get('bottom')}] -> Ketuk koordinat ({cx}, {cy})")
+                        d.click(cx, cy)
+                        time.sleep(SLEEP_SHORT)
+                        radio_found = True
                         break
-                    print(f"[RETRY RADIO] '1. Berhasil didata' belum tercentang (percobaan ke-{r_attempt}/{max_radio_attempts}). Mengulangi...")
+
+                # 2. Cek apakah label "Hasil Pendataan" telah terdorong ke atas layar sampai hilang
+                is_hasil_pendataan_hilang = not (
+                    check_exists(d(textContains="Hasil Pendataan")) or 
+                    check_exists(d(textContains="Hasil pendataan")) or
+                    check_exists(d(textContains="104. Hasil pendataan"))
+                )
+
+                if is_hasil_pendataan_hilang and scan_attempt > 1:
+                    print("[RADIO] Label 'Hasil Pendataan' terdorong ke atas hingga hilang. Menggulung/scroll ke atas...")
+                    loop_swipe_statis(delta_y=400, loop=1)
                     time.sleep(SLEEP_SHORT)
-                    loop_swipe_statis(delta_y=-200, loop=1)
+                else:
+                    print(f"[RADIO] Scroll ke bawah mencari 'Berhasil Didata' (Percobaan {scan_attempt}/{max_scan_attempts})...")
+                    loop_swipe_statis(delta_y=-300, loop=1)
                     time.sleep(SLEEP_SHORT)
 
-            if not radio_success:
-                print(f"[RADIO CHECK] [SKIP] RadioButton '1. Berhasil didata' belum tercentang setelah {max_radio_attempts}x percobaan (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
+            if not radio_found:
+                print(f"[RADIO CHECK] [SKIP] Teks/RadioButton 'Berhasil Didata' tidak ditemukan (IDPEL: {idpel}). Menyimpan status Excel & berpindah ke baris berikutnya...")
                 simpan_status_excel(row, "Error : RadioButton 1. Berhasil didata tidak tercentang")
                 kembali_ke_daftar_assignment()
                 sukses_baris = True
