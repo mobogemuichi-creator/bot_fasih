@@ -1491,29 +1491,14 @@ def input_textbox(label_text, value, bounds_fallback=None, exact=False, sleep_af
 
 def normalisasi_nama_desa(val):
     """
-    Normalisasi nama Desa/Kelurahan khusus variasi Padang Sambian & Pemecutan:
-    - 'PADANG SAMBIAN KAJA' -> 'PADANGSAMBIAN KAJA'
-    - 'PADANG SAMBIAN KELOD' / 'PADANGSAMBIAN KELOD' -> 'PADANGSAMBIAN KLOD'
-    - 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
-    - 'PEMECUTAN KELOD' -> 'PEMECUTAN KLOD'
+    Normalisasi nama Desa/Kelurahan:
+    - Ganti 'PADANG SAMBIAN' -> 'PADANGSAMBIAN'
+    - Ganti semua kata/teks yang mengandung 'KELOD' / 'Kelod' / 'kelod' menjadi 'KLOD'
     """
     if not val:
         return val
-    replacements = [
-        ("PADANG SAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
-        ("PADANGSAMBIAN KELOD", "PADANGSAMBIAN KLOD"),
-        ("Padang Sambian Kelod", "PADANGSAMBIAN KLOD"),
-        ("Padangsambian Kelod", "PADANGSAMBIAN KLOD"),
-        ("PADANG SAMBIAN KAJA", "PADANGSAMBIAN KAJA"),
-        ("Padang Sambian Kaja", "PADANGSAMBIAN KAJA"),
-        ("PADANG SAMBIAN", "PADANGSAMBIAN"),
-        ("Padang Sambian", "PADANGSAMBIAN"),
-        ("PEMECUTAN KELOD", "PEMECUTAN KLOD"),
-        ("Pemecutan Kelod", "PEMECUTAN KLOD"),
-    ]
-    for old_str, new_str in replacements:
-        if old_str in val:
-            val = val.replace(old_str, new_str)
+    val = re.sub(r'PADANG\s+SAMBIAN', 'PADANGSAMBIAN', val, flags=re.IGNORECASE)
+    val = re.sub(r'KELOD', 'KLOD', val, flags=re.IGNORECASE)
     return val
 
 def verifikasi_nama_penghuni_terisi(d_dev):
