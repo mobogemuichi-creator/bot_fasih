@@ -2814,7 +2814,7 @@ def proses_update_reject_nik():
                     loop_swipe_statis(delta_y=-300, loop=1)
                 else:
                     print(f"[RADIO] Scroll KE ATAS mendekati RadioButton (Percobaan {scan_attempt}/{max_scan_attempts})...")
-                    loop_swipe_statis(delta_y=300, loop=1)
+                    loop_swipe_statis(delta_y=250, loop=1)
 
                 time.sleep(SLEEP_SHORT)
 
