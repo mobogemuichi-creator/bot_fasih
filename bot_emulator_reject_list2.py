@@ -380,7 +380,23 @@ def salin_reject_ke_excel(file_txt="reject2.txt", file_excel=None):
         ws.cell(row=1, column=2, value="NO_METER")
         print(f"[EXCEL] Membuat file Excel baru '{file_excel}'...")
 
-    # 2. Baca isi file reject.txt dan simpan ke Excel
+    # 2. Cari baris terisi terakhir (berdasarkan value Kolom A atau Kolom B) untuk mencegah gap akibat max_row openpyxl
+    last_filled_row = 0
+    for r in range(ws.max_row, 0, -1):
+        cell_a = ws.cell(row=r, column=1).value
+        cell_b = ws.cell(row=r, column=2).value
+        if (cell_a is not None and str(cell_a).strip() != "") or (cell_b is not None and str(cell_b).strip() != ""):
+            last_filled_row = r
+            break
+
+    target_row = last_filled_row + 1
+    if target_row < 2 and (ws.cell(row=1, column=1).value is None or str(ws.cell(row=1, column=1).value).strip() == ""):
+        # Jika sheet kosong tanpa header
+        ws.cell(row=1, column=1, value="IDPEL")
+        ws.cell(row=1, column=2, value="NO_METER")
+        target_row = 2
+
+    # 3. Baca isi file reject.txt dan simpan ke Excel
     baris_ditambahkan = 0
     try:
         with open(file_txt, "r", encoding="utf-8") as f:
@@ -408,11 +424,13 @@ def salin_reject_ke_excel(file_txt="reject2.txt", file_excel=None):
 
             if idpel:
                 # Kolom A = idpel, Kolom B = no_meter
-                ws.append([idpel, no_meter])
+                ws.cell(row=target_row, column=1, value=idpel)
+                ws.cell(row=target_row, column=2, value=no_meter)
+                target_row += 1
                 baris_ditambahkan += 1
 
         wb.save(file_excel)
-        print(f"[SUKSES] Berhasil menyalin {baris_ditambahkan} baris data dari '{file_txt}' ke '{file_excel}'!")
+        print(f"[SUKSES] Berhasil menyalin {baris_ditambahkan} baris data dari '{file_txt}' ke '{file_excel}' (dimulai dari baris {last_filled_row + 1})!")
         print(f"        Kolom A = IDPEL | Kolom B = NO_METER")
         return True
 

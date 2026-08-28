@@ -373,7 +373,23 @@ def salin_reject_ke_excel(file_txt="reject.txt", file_excel="data_reject.xlsx"):
         ws.cell(row=1, column=2, value="NO_METER")
         print(f"[EXCEL] Membuat file Excel baru '{file_excel}'...")
 
-    # 2. Baca isi file reject.txt dan simpan ke Excel
+    # 2. Cari baris terisi terakhir (berdasarkan value Kolom A atau Kolom B) untuk mencegah gap akibat max_row openpyxl
+    last_filled_row = 0
+    for r in range(ws.max_row, 0, -1):
+        cell_a = ws.cell(row=r, column=1).value
+        cell_b = ws.cell(row=r, column=2).value
+        if (cell_a is not None and str(cell_a).strip() != "") or (cell_b is not None and str(cell_b).strip() != ""):
+            last_filled_row = r
+            break
+
+    target_row = last_filled_row + 1
+    if target_row < 2 and (ws.cell(row=1, column=1).value is None or str(ws.cell(row=1, column=1).value).strip() == ""):
+        # Jika sheet kosong tanpa header
+        ws.cell(row=1, column=1, value="IDPEL")
+        ws.cell(row=1, column=2, value="NO_METER")
+        target_row = 2
+
+    # 3. Baca isi file reject.txt dan simpan ke Excel
     baris_ditambahkan = 0
     try:
         with open(file_txt, "r", encoding="utf-8") as f:
@@ -401,11 +417,13 @@ def salin_reject_ke_excel(file_txt="reject.txt", file_excel="data_reject.xlsx"):
 
             if idpel:
                 # Kolom A = idpel, Kolom B = no_meter
-                ws.append([idpel, no_meter])
+                ws.cell(row=target_row, column=1, value=idpel)
+                ws.cell(row=target_row, column=2, value=no_meter)
+                target_row += 1
                 baris_ditambahkan += 1
 
         wb.save(file_excel)
-        print(f"[SUKSES] Berhasil menyalin {baris_ditambahkan} baris data dari '{file_txt}' ke '{file_excel}'!")
+        print(f"[SUKSES] Berhasil menyalin {baris_ditambahkan} baris data dari '{file_txt}' ke '{file_excel}' (dimulai dari baris {last_filled_row + 1})!")
         print(f"        Kolom A = IDPEL | Kolom B = NO_METER")
         return True
 
@@ -445,39 +463,11 @@ def proses_ekstraksi_dan_swipe():
                 print(f"  [SKIP KEMBAR] IDPEL: {idpel} (sudah tersimpan sebelumnya)")
         return baris_baru
 
-    # Cari index kolom IDPEL pada CUSTOM_COLUMNS untuk membaca file lama
-    idpel_col_idx = None
-    for idx, (field, _) in enumerate(CUSTOM_COLUMNS):
-        if field == "IDPEL":
-            idpel_col_idx = idx
-            break
-
-    # Cek jika file reject.txt sudah ada -> muat IDPEL lama ke set_terproses agar tidak duplikat
-    if os.path.exists(file_output):
-        try:
-            with open(file_output, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                for line in lines[1:]:
-                    parts = line.strip().split("\t")
-                    if idpel_col_idx is not None and len(parts) > idpel_col_idx:
-                        existing_idpel = parts[idpel_col_idx].strip()
-                        if existing_idpel:
-                            set_terproses.add(existing_idpel)
-                    else:
-                        for part in parts:
-                            p = part.strip()
-                            if p.isdigit() and len(p) >= 10:
-                                set_terproses.add(p)
-                                break
-            print(f"[FILE] File '{file_output}' ditemukan. Memuat {len(set_terproses)} IDPEL lama (mencegah duplikat lintas eksekusi).")
-        except Exception as e:
-            print(f"[WARNING] Gagal membaca isi file '{file_output}' lama: {e}")
-    else:
-        # Tulis header dinamis jika file reject.txt belum ada
-        header_text = "\t".join([header for _, header in CUSTOM_COLUMNS]) + "\n"
-        with open(file_output, "w", encoding="utf-8") as f:
-            f.write(header_text)
-        print(f"[FILE] Membuat file baru '{file_output}' dengan header: '{header_text.strip()}'")
+    # Clear/reset file reject.txt dan tulis header baru setiap kali script dijalankan
+    header_text = "\t".join([header for _, header in CUSTOM_COLUMNS]) + "\n"
+    with open(file_output, "w", encoding="utf-8") as f:
+        f.write(header_text)
+    print(f"[FILE] Berhasil mengosongkan/clear '{file_output}' dan menulis header: '{header_text.strip()}'")
 
     width = d.info.get('displayWidth', 1080)
     height = d.info.get('displayHeight', 1920)
