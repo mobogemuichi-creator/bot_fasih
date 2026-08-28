@@ -2701,6 +2701,39 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
+            # Cek jika terdeteksi teks mengandung kata "tidak match"
+            is_tidak_match = False
+            try:
+                if check_exists(d(textContains="tidak match")) or \
+                   check_exists(d(textContains="TIDAK MATCH")) or \
+                   check_exists(d(descriptionContains="tidak match")) or \
+                   check_exists(d(descriptionContains="TIDAK MATCH")) or \
+                   check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'tidak match') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'tidak match')]")):
+                    is_tidak_match = True
+            except Exception:
+                pass
+
+            if is_tidak_match:
+                print(f"[BLOK I] [TIDAK MATCH] Terdeteksi pesan 'tidak match' untuk IDPEL {idpel}. Mencari & mengetuk tombol 'Cek ID Pelanggan'...")
+                btn_cek = d(textContains="Cek ID Pelanggan") or d(textContains="CEK ID PELANGGAN") or d(descriptionContains="Cek ID Pelanggan")
+                if check_exists(btn_cek):
+                    try:
+                        btn_cek.click()
+                        print("[BLOK I] [TIDAK MATCH] Tombol 'Cek ID Pelanggan' berhasil diketuk.")
+                    except Exception as e:
+                        print(f"[BLOK I] [WARNING] Gagal mengetuk tombol 'Cek ID Pelanggan': {e}")
+                        ketuk("Cek ID Pelanggan")
+                else:
+                    print("[BLOK I] [RETRY] Mengetuk tombol 'Cek ID Pelanggan' via ketuk()...")
+                    ketuk("Cek ID Pelanggan")
+
+                print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
+                tunggu_loading(timeout=30)
+                time.sleep(SLEEP_SHORT)
+                print("[BLOK I] Loading selesai. Memperbarui data alamat & melanjutkan proses seperti biasa...")
+                alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
+                time.sleep(SLEEP_SHORT)
+
             # Cek jika data alamat mengandung kata 'null' (case-insensitive), '[]', atau 'tidak ditemukan'
             is_alamat_null = False
             is_tidak_ditemukan = False
