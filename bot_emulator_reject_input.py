@@ -117,10 +117,10 @@ def baca_data_reject(file_path=EXCEL_FILE):
             no_telp_val = row[no_telp_idx] if (no_telp_idx != -1 and no_telp_idx < len(row)) else None
             status_val = row[status_idx] if (status_idx != -1 and status_idx < len(row)) else None
 
-            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', 'ERROR', atau 'KOORDINAT & FOTO TIDAK ADA' (kecuali 'ALAMAT TIDAK DITEMUKAN')
+            # Skip baris yang statusnya sudah memuat 'SUKSES', 'SUBMIT', 'TIDAK DITEMUKAN', 'ERROR', atau 'KOORDINAT & FOTO TIDAK ADA' (kecuali 'ALAMAT TIDAK DITEMUKAN' atau 'ALAMAT NULL')
             if status_val is not None:
                 status_str = str(status_val).strip().upper()
-                if "ALAMAT TIDAK DITEMUKAN" not in status_str:
+                if "ALAMAT TIDAK DITEMUKAN" not in status_str and "ALAMAT NULL" not in status_str:
                     if any(x in status_str for x in ["SUKSES", "SUBMIT", "TIDAK DITEMUKAN", "ERROR", "KOORDINAT & FOTO TIDAK ADA", "KOORDINAT"]):
                         skipped_count += 1
                         continue
@@ -1848,34 +1848,33 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
     if info_alamat.get("Desa/Kelurahan"):
         info_alamat["Desa/Kelurahan"] = normalisasi_nama_desa(info_alamat["Desa/Kelurahan"])
 
-    # Validasi jika data alamat server kosong / hanya kurung siku "[]"
-    alamat_kosong = False
-    if d(text="[]").exists() or d(text="[ ]").exists():
-        alamat_kosong = True
+    # Validasi apakah data alamat valid atau tidak valid ('null', '[]', 'tidak ditemukan')
+    alamat_tidak_valid = False
+    if d(text="[]").exists() or d(text="[ ]").exists() or d(textContains="[null]").exists():
+        alamat_tidak_valid = True
     else:
-        nilai_bersih = []
         for k, v in info_alamat.items():
-            clean_v = v.split(":", 1)[1].strip() if ":" in v else v.strip()
-            nilai_bersih.append(clean_v)
-        if any(v in ["[]", "[ ]"] for v in nilai_bersih) or all(v in ["", "[]", "[ ]", "(tidak ditemukan)"] for v in nilai_bersih):
-            alamat_kosong = True
+            v_str = str(v).lower()
+            if "null" in v_str or "[]" in v_str or "tidak ditemukan" in v_str:
+                alamat_tidak_valid = True
+                break
 
-    if alamat_kosong:
-        print(f"[BLOK I] Data alamat server kosong (berisi '[]') untuk IDPEL {idpel}.")
-
-    # Simpan ke file file_output (temp_alamat.txt)
-    try:
-        with open(file_output, "w", encoding="utf-8") as f_temp:
-            for key in ["Provinsi", "Kabupaten", "Kecamatan", "Desa/Kelurahan", "Alamat"]:
-                val = info_alamat[key]
-                if not val.startswith(key):
-                    val = f"{key}: {val}"
-                f_temp.write(val + "\n")
-        print(f"[BLOK I] Data alamat berhasil disimpan ke '{file_output}':")
-        for key, val in info_alamat.items():
-            print(f"  - {val}")
-    except Exception as write_err:
-        print(f"[WARNING] Gagal menulis ke '{file_output}': {write_err}")
+    if alamat_tidak_valid:
+        print(f"[BLOK I] [WARNING] Data alamat server tidak valid ('null' / '[]' / 'tidak ditemukan') untuk IDPEL {idpel}. File '{file_output}' TIDAK disimpan/diperbarui (tetap menggunakan data IDPEL sebelumnya).")
+    else:
+        # Simpan ke file file_output (temp_alamat.txt) HANYA JIKA VALID
+        try:
+            with open(file_output, "w", encoding="utf-8") as f_temp:
+                for key in ["Provinsi", "Kabupaten", "Kecamatan", "Desa/Kelurahan", "Alamat"]:
+                    val = info_alamat[key]
+                    if not val.startswith(key):
+                        val = f"{key}: {val}"
+                    f_temp.write(val + "\n")
+            print(f"[BLOK I] Data alamat VALID berhasil disimpan ke '{file_output}':")
+            for key, val in info_alamat.items():
+                print(f"  - {val}")
+        except Exception as write_err:
+            print(f"[WARNING] Gagal menulis ke '{file_output}': {write_err}")
 
     return info_alamat
 
@@ -2709,19 +2708,8 @@ def proses_update_reject_nik():
                     is_alamat_null = True
                     print(f"[BLOK I] [WARNING] Terdeteksi kata 'null' / '[]' pada field alamat '{k}': '{v}' (IDPEL: {idpel}).")
 
-            if is_tidak_ditemukan:
-                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} terdeteksi 'tidak ditemukan'. Menyimpan status 'Error : Alamat tidak ditemukan' & berpindah ke baris berikutnya...")
-                simpan_status_excel(row, "Error : Alamat tidak ditemukan")
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
-
-            if is_alamat_null:
-                print(f"[BLOK I] [SKIP] Data alamat untuk IDPEL {idpel} tidak valid ('null' / '[]'). Menyimpan status 'Error: Alamat NULL' & berpindah ke baris berikutnya...")
-                simpan_status_excel(row, "Error: Alamat NULL")
-                kembali_ke_daftar_assignment()
-                sukses_baris = True
-                break
+            if is_tidak_ditemukan or is_alamat_null:
+                print(f"[BLOK I] [FALLBACK] Data alamat untuk IDPEL {idpel} tidak valid/null/tidak ditemukan. Tetap melanjutkan proses seperti biasa menggunakan data 'temp_alamat.txt' dari IDPEL sebelumnya...")
 
             # Scan & scroll otomatis untuk mencari "Berhasil Didata" dengan batas '105. Koordinat lokasi meteran'
             print("[RADIO] Memulai scan & scroll dinamis untuk mencari 'Berhasil Didata'...")
@@ -3049,7 +3037,7 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
-            loop_swipe_dinamis(delta_y=-700, target_text="204. Status kepemilikan")
+            loop_swipe_statis(delta_y=-700, loop=3)
             isi_dan_verifikasi_no_telp(d, target_val='-', max_attempts=5)
             
             # Pengecekan status RadioButton: Ketuk '1. Milik sendiri' HANYA jika belum tercentang
