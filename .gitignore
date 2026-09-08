@@ -19,6 +19,7 @@
 !bot_emulator_idpel2.py
 !bot_emulator_meter.py
 !bot_emulator_meter2.py
+bot_emulator_reject_cek_NIK.py
 !bot_emulator_reject_input.py
 !bot_emulator_reject_input2.py
 !bot_emulator_reject_list.py
