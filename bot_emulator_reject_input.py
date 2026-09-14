@@ -14,8 +14,13 @@ from konfigurasi import (
     SLEEP_SHORT,
     SLEEP_MEDIUM,
     SLEEP_LONG_REJECT as SLEEP_LONG,
-    PAUSE_ON_GALAT_0,
 )
+
+# Ambil PAUSE_ON_GALAT_0 dengan fallback jika konfigurasi.py belum terupdate di PC lokal
+try:
+    from konfigurasi import PAUSE_ON_GALAT_0
+except ImportError:
+    PAUSE_ON_GALAT_0 = False
 
 # ==============================================================================
 # KONFIGURASI BOT REJECT INPUT

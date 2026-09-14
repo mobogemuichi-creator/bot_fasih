@@ -76,3 +76,20 @@ CUSTOM_COLUMNS = [
 # Masukkan status yang ingin DICENTANG / DIAKTIFKAN ke dalam list di bawah ini.
 # Contoh multiple filter: FILTER_STATUS_TARGET = ["Open", "Pernah dibuka"] atau ["Submit", "Approve"]
 FILTER_STATUS_TARGET = ["Reject"]
+
+# ------------------------------------------------------------------------------
+# 6. REJECT INPUT CONFIGURATION (bot_emulator_reject_input)
+# ------------------------------------------------------------------------------
+# Toggle pause ketika status 'GALAT 0' terdeteksi pada modal ringkasan validasi:
+# True  = Bot berhenti sejenak (pause) dengan pilihan: Stop seluruh proses atau Lanjutkan
+# False = Bot langsung melanjutkan submit otomatis tanpa pause
+PAUSE_ON_GALAT_0 = False
+
+# ------------------------------------------------------------------------------
+# 7. OVERRIDE KONFIGURASI LOKAL (JIKA ADA)
+# ------------------------------------------------------------------------------
+# Mengambil variabel lokal (misal: path LDPlayer, folder foto laptop) jika file konfigurasi_lokal.py ada
+try:
+    from konfigurasi_lokal import *
+except ImportError:
+    pass
