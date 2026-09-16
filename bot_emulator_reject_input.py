@@ -3855,6 +3855,94 @@ def proses_update_reject_nik():
                 sukses_baris = True
                 break
 
+            # --- PENGECEKAN GALAT 0 SETELAH CEK NIK ---
+            print(f"\n[CEK NIK -> VALIDASI] Memeriksa status 'GALAT 0' setelah Cek NIK untuk IDPEL {idpel}...")
+            is_galat_0_nik = (
+                check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
+                check_exists(d(textContains="GALAT 0")) or 
+                check_exists(d(descriptionContains="GALAT 0")) or 
+                check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))
+            )
+
+            modal_validasi_terbuka = False
+            if not is_galat_0_nik:
+                # Buka modal ringkasan validasi dengan mengetuk 'Kirim' pada toolbar atas
+                print("[CEK NIK -> VALIDASI] Mengetuk tombol 'Kirim' toolbar untuk memverifikasi ringkasan validasi (GALAT 0)...")
+                kirim_clicked = False
+
+                btn_kirim = d(className="android.widget.Button", text="Kirim")
+                if not btn_kirim.exists():
+                    btn_kirim = d(text="Kirim", clickable=True)
+                if not btn_kirim.exists():
+                    btn_kirim = d(text="Kirim")
+
+                if check_exists(btn_kirim):
+                    try:
+                        info = btn_kirim.info
+                        b = info.get("bounds") if isinstance(info, dict) else None
+                        if b and isinstance(b, dict):
+                            cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                            if cx > 0 and cy > 0:
+                                print(f"[CEK NIK -> VALIDASI] Mengetuk tombol 'Kirim' toolbar pada ({cx}, {cy})...")
+                                d.click(cx, cy)
+                                kirim_clicked = True
+                    except Exception:
+                        pass
+
+                if not kirim_clicked:
+                    print("[CEK NIK -> VALIDASI] Mengetuk tombol 'Kirim' toolbar via ketuk()...")
+                    kirim_clicked = ketuk("Kirim", sleep_after=SLEEP_SHORT)
+
+                if not kirim_clicked:
+                    print("[CEK NIK -> VALIDASI] Fallback mengetuk koordinat toolbar atas (894, 162)...")
+                    d.click(894, 162)
+
+                time.sleep(SLEEP_SHORT)
+
+                # Ketuk YA jika muncul dialog konfirmasi pengiriman
+                if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
+                    ketuk("YA", sleep_after=SLEEP_SHORT)
+                    time.sleep(SLEEP_SHORT)
+
+                # Tunggu dan periksa apakah modal ringkasan validasi menampilkan 'GALAT 0'
+                for _ in range(12):
+                    if (check_exists(d(textContains="GALAT 0 Perlu diperbaiki")) or 
+                        check_exists(d(textContains="GALAT 0")) or 
+                        check_exists(d(descriptionContains="GALAT 0")) or 
+                        check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
+                        is_galat_0_nik = True
+                        modal_validasi_terbuka = True
+                        break
+                    elif (check_exists(d(textContains="GALAT")) or 
+                          check_exists(d(text="Dismiss")) or 
+                          check_exists(d(textContains="Perlu diperbaiki"))):
+                        modal_validasi_terbuka = True
+                        break
+                    time.sleep(0.3)
+
+            if is_galat_0_nik:
+                print(f"[CEK NIK -> SUBMIT] [SUKSES] Terdeteksi 'GALAT 0' setelah Cek NIK untuk IDPEL {idpel}! Langsung memproses submit & selesai...")
+                if not pause_proses_galat_0(idpel=idpel, row=row, keterangan="Setelah Cek NIK (GALAT 0)"):
+                    print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
+                    return
+                res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
+                if res_submit == "retry":
+                    continue
+                else:
+                    sukses_baris = True
+                    break
+            else:
+                print(f"[CEK NIK -> VALIDASI] Belum 'GALAT 0' setelah Cek NIK untuk IDPEL {idpel}. Menutup modal validasi & melanjutkan pengisian BLOK II, III, dan IV...")
+                if modal_validasi_terbuka or check_exists(d(text="Dismiss")):
+                    for _ in range(2):
+                        if check_exists(d(text="Dismiss")):
+                            d(text="Dismiss").click()
+                            time.sleep(SLEEP_SHORT)
+                        elif check_exists(d(textContains="Dismiss")):
+                            ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                            time.sleep(SLEEP_SHORT)
+
             loop_swipe_statis(delta_y=-700, loop=3)
             isi_dan_verifikasi_no_telp(d, target_val='-', max_attempts=5)
             
