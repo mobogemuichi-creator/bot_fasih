@@ -3687,46 +3687,7 @@ def proses_update_reject_nik():
                 fix_berhasil = perbaiki_galat_koordinat_foto(skip_ketuk_galat=True)
 
                 if fix_berhasil:
-                    # Setelah perbaikan berhasil → ketuk Kirim → cek GALAT 0 → eksekusi submit
-                    print("[GALAT FIX] Perbaikan berhasil pada validasi awal. Mengetuk 'Kirim' untuk re-submit...")
-                    ketuk("Kirim", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                    # Ketuk YA jika muncul konfirmasi
-                    if check_exists(d(text="YA")) or check_exists(d(textContains="YA")):
-                        ketuk("YA", sleep_after=SLEEP_SHORT)
-                        time.sleep(SLEEP_SHORT)
-
-                    # Cek GALAT 0 setelah perbaikan
-                    print("[SUBMIT] Memeriksa status 'GALAT 0' setelah perbaikan validasi awal...")
-                    is_galat_0_fix = False
-                    for galat_attempt in range(15):
-                        if (check_exists(d(textContains="GALAT 0")) or
-                            check_exists(d(descriptionContains="GALAT 0")) or
-                            check_exists(d.xpath("//*[contains(@text, 'GALAT 0') or contains(@content-desc, 'GALAT 0')]"))):
-                            is_galat_0_fix = True
-                            break
-                        time.sleep(0.3)
-
-                    if is_galat_0_fix:
-                        print(f"[GALAT FIX] 'GALAT 0' terdeteksi setelah perbaikan validasi awal untuk IDPEL {idpel}!")
-                        # Pause proses jika PAUSE_ON_GALAT_0 aktif
-                        if not pause_proses_galat_0(idpel=idpel, row=row, keterangan="Perbaikan Validasi Awal"):
-                            print(f"[HALT] Seluruh proses bot dihentikan secara manual oleh pengguna pada baris {row} (IDPEL: {idpel}).")
-                            return
-
-                        res_submit = eksekusi_submit_dan_selesai(row, idpel, row_attempt)
-                        if res_submit == "retry":
-                            continue
-                        else:
-                            sukses_baris = True
-                            break
-                    else:
-                        print(f"[WARNING] 'GALAT 0' tidak terdeteksi setelah perbaikan validasi awal untuk IDPEL {idpel}. Menyimpan status & skip...")
-                        simpan_status_excel(row, "koordinat & foto tidak ada")
-                        kembali_ke_daftar_assignment()
-                        sukses_baris = True
-                        break
+                    print("[GALAT FIX] Perbaikan berhasil pada validasi awal. Melanjutkan ke BLOK II, III, dan IV (re-submit dilakukan setelah mengisi catatan di Blok IV)...")
                 else:
                     # Perbaikan gagal → fallback skip
                     print(f"[GALAT CHECK] [SKIP] Perbaikan otomatis gagal untuk IDPEL {idpel}. Menyimpan status & berpindah ke baris berikutnya...")
