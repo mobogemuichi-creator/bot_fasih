@@ -928,24 +928,47 @@ def perbaiki_galat_koordinat_foto(skip_ketuk_galat=False):
                 else:
                     print("[WARNING] Ikon burger tidak ditemukan, mencoba melanjutkan...")
 
-                # Ketuk Recent / Terbaru
-                print("[GALAT FIX] Mengetuk opsi 'Recent'...")
+                # Ketuk Recent / Baru-baru ini / Terbaru
+                print("[GALAT FIX] Mengetuk opsi 'Recent' atau 'Baru-baru ini'...")
                 recent_btn = None
-                for text_val in ["Recent", "Terbaru", "recent", "terbaru"]:
+                recent_keywords = [
+                    "Recent", "recent",
+                    "Baru-baru ini", "baru-baru ini",
+                    "Baru - baru ini", "baru - baru ini",
+                    "Baru baru ini", "baru baru ini",
+                    "Terbaru", "terbaru"
+                ]
+                for text_val in recent_keywords:
                     if d(text=text_val, resourceId="android:id/title").exists():
                         recent_btn = d(text=text_val, resourceId="android:id/title")
                         break
+                    elif d(text=text_val, resourceId="com.android.documentsui:id/title").exists():
+                        recent_btn = d(text=text_val, resourceId="com.android.documentsui:id/title")
+                        break
                 if not recent_btn:
-                    for text_val in ["Recent", "Terbaru", "recent", "terbaru"]:
+                    for text_val in recent_keywords:
                         if d(text=text_val).exists():
                             recent_btn = d(text=text_val)
                             break
+                if not recent_btn:
+                    for text_val in ["Recent", "Baru-baru ini", "Baru baru ini", "Terbaru", "recent", "baru-baru ini", "terbaru"]:
+                        if d(textContains=text_val).exists():
+                            recent_btn = d(textContains=text_val)
+                            break
+                if not recent_btn:
+                    try:
+                        xpath_recent = d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'recent') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'baru-baru') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'baru baru') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'terbaru')]")
+                        if xpath_recent.exists:
+                            recent_btn = xpath_recent
+                    except Exception:
+                        pass
 
                 if recent_btn and recent_btn.exists(timeout=5):
+                    print("[GALAT FIX] Opsi 'Recent'/'Baru-baru ini' ditemukan. Mengetuk...")
                     recent_btn.click()
                     time.sleep(1.5)
                 else:
-                    print("[WARNING] 'Recent' tidak ditemukan, mencoba melanjutkan...")
+                    print("[WARNING] 'Recent' / 'Baru-baru ini' tidak ditemukan, mencoba melanjutkan...")
 
                 # === LANGSUNG PILIH GAMBAR PERTAMA (tanpa search IDPEL) ===
                 print("[GALAT FIX] Memilih gambar pertama di galeri (tanpa pencarian IDPEL)...")
@@ -965,7 +988,12 @@ def perbaiki_galat_koordinat_foto(skip_ketuk_galat=False):
                 # Metode 2: android:id/title yang BUKAN nama folder header
                 if not first_file_btn:
                     try:
-                        folder_names = ["pictures", "images", "gambar", "recent", "terbaru", "downloads", "audio", "videos"]
+                        folder_names = [
+                            "pictures", "images", "gambar", 
+                            "recent", "terbaru", 
+                            "baru-baru ini", "baru - baru ini", "baru baru ini",
+                            "downloads", "audio", "videos"
+                        ]
                         for el in d(resourceId="android:id/title"):
                             txt = el.info.get('text', '').strip()
                             if txt and txt.lower() not in folder_names:
