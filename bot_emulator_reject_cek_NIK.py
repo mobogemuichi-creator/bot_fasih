@@ -1865,7 +1865,7 @@ def proses_update_reject_nik():
                     break
 
             #10-B & 11 Input NIK dan ketuk "Cek NIK" (retry jika terdeteksi 'NIK tidak valid')
-            max_nik_attempts = 3
+            max_nik_attempts = 1
             for nik_attempt in range(1, max_nik_attempts + 1):
                 input_textbox(label_text="202. NIK penghuni", value=nik, bounds_fallback=None, exact=False, sleep_after=SLEEP_SHORT)
                 
