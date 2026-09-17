@@ -3936,12 +3936,14 @@ def proses_update_reject_nik():
                 print(f"[CEK NIK -> VALIDASI] Belum 'GALAT 0' setelah Cek NIK untuk IDPEL {idpel}. Menutup modal validasi & melanjutkan pengisian BLOK II, III, dan IV...")
                 if modal_validasi_terbuka or check_exists(d(text="Dismiss")):
                     for _ in range(2):
-                        if check_exists(d(text="Dismiss")):
-                            d(text="Dismiss").click()
-                            time.sleep(SLEEP_SHORT)
-                        elif check_exists(d(textContains="Dismiss")):
-                            ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                            time.sleep(SLEEP_SHORT)
+                        try:
+                            if check_exists(d(text="Dismiss")) or check_exists(d(textContains="Dismiss")):
+                                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                                time.sleep(SLEEP_SHORT)
+                            else:
+                                break
+                        except Exception:
+                            break
 
             loop_swipe_statis(delta_y=-700, loop=3)
             isi_dan_verifikasi_no_telp(d, target_val='-', max_attempts=5)

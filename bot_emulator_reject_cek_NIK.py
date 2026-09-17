@@ -1434,6 +1434,27 @@ def konfirmasi_stop_atau_lanjut(pesan="Tekan ENTER / Y untuk melanjutkan, atau k
         print("\n[STOP] Interupsi terdeteksi. Mengakhiri proses.")
         return False
 
+
+def tutup_modal_validasi():
+    """
+    Menutup dialog/modal validasi (Dismiss) dengan aman:
+    - Hanya mengetuk jika tombol Dismiss masih ada di layar.
+    - Menggunakan try-except agar tidak melempar UiObjectNotFoundError jika modal sudah hilang saat diklik.
+    - Jika modal sudah tertutup (tidak ada lagi elemen Dismiss), loop langsung berhenti.
+    """
+    for attempt in range(1, 3):
+        try:
+            if check_exists(d(text="Dismiss")) or check_exists(d(textContains="Dismiss")):
+                print(f"[DISMISS] Mengetuk 'Dismiss' (percobaan {attempt})...")
+                ketuk("Dismiss", sleep_after=SLEEP_SHORT)
+                time.sleep(SLEEP_SHORT)
+            else:
+                break
+        except Exception as err:
+            print(f"[DISMISS] Modal sudah tertutup / tidak aktif ({err}).")
+            break
+
+
 def proses_update_reject_nik():
     """Fungsi utama memproses list data reject untuk update NIK"""
     data_reject = baca_data_reject(EXCEL_FILE)
@@ -1704,19 +1725,7 @@ def proses_update_reject_nik():
 
                 if is_nomor_meter_galat:
                     print(f"[GALAT CHECK] [TRUE] Terdeteksi galat 'Nomor Meter' / 'ID pelanggan PLN' untuk IDPEL {idpel}!")
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
+                    tutup_modal_validasi()
 
                     # Scroll ke bawah sampai ketemu "Cek ID Pelanggan" dan ketuk tombolnya
                     print("[BLOK I] Men-scroll secara dinamis ke tombol 'Cek ID Pelanggan'...")
@@ -1793,35 +1802,11 @@ def proses_update_reject_nik():
                     time.sleep(SLEEP_SHORT)
                 elif is_nik_galat:
                     print(f"[GALAT CHECK] [FALSE] Tidak ada galat 'ID Pelanggan / Nomor Meter', terdeteksi galat 'NIK penghuni' untuk IDPEL {idpel}.")
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
+                    tutup_modal_validasi()
                     print("[BLOK I -> BLOK II] Melanjutkan langsung ke BLOK II...")
                 else:
                     print("[GALAT CHECK] [FALSE] Tidak terdeteksi galat 'ID Pelanggan / Nomor Meter' maupun 'NIK penghuni'. Menutup modal...")
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
-
-                    print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
-                    if d(text="Dismiss").exists():
-                        d(text="Dismiss").click()
-                    else:
-                        ketuk("Dismiss", sleep_after=SLEEP_SHORT)
-                    time.sleep(SLEEP_SHORT)
+                    tutup_modal_validasi()
             else:
                 print("[VALIDASI AWAL] [WARNING] Modal ringkasan validasi tidak terbuka. Melanjutkan langsung ke BLOK II...")
 
