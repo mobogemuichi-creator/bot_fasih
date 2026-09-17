@@ -22,6 +22,7 @@
 !bot_emulator_reject_cek_NIK.py
 !bot_emulator_reject_input.py
 !bot_emulator_reject_input2.py
+!bot_emulator_reject_oop.py
 !bot_emulator_reject_list.py
 !bot_emulator_reject_list2.py
 !ss_gmaps.py
@@ -30,6 +31,10 @@
 !cek_idpel_1.py
 !cek_nometer_1.py
 !scan_page.py
+
+# Whitelist bot_reject modular package
+!bot_reject/
+!bot_reject/*.py
 
 # Whitelist gitignore
 !.gitignore
