@@ -12,6 +12,7 @@
 !4_run_bot_emulator_reject_list2.bat
 !5_run_bot_emulator_reject_input.bat
 !5_run_bot_emulator_reject_input2.bat
+!5_run_bot_emulator_reject_input3.bat
 !auto_update.bat
 
 # Whitelist allowed .py scripts
@@ -22,6 +23,7 @@
 !bot_emulator_reject_cek_NIK.py
 !bot_emulator_reject_input.py
 !bot_emulator_reject_input2.py
+!bot_emulator_reject_input3.py
 !bot_emulator_reject_list.py
 !bot_emulator_reject_list2.py
 !ss_gmaps.py

@@ -9,21 +9,26 @@ import os
 LDPLAYER_DNCONSOLE = r"C:\LDPlayer\LDPlayer9\dnconsole.exe"
 LDPLAYER_ADB = r"C:\LDPlayer\LDPlayer9\adb.exe"
 
-# Index emulator LDPlayer untuk instance 1 dan instance 2
+# Index emulator LDPlayer untuk instance 1, 2, dan 3
 EMULATOR_INDEX_1 = "0"  # Digunakan oleh bot_emulator_idpel, bot_emulator_meter, bot_emulator_reject_list
-EMULATOR_INDEX_2 = "1"  # Digunakan oleh bot_emulator_idpel2, bot_emulator_meter2
+EMULATOR_INDEX_2 = "1"  # Digunakan oleh bot_emulator_idpel2, bot_emulator_meter2, bot_emulator_reject_input2
+EMULATOR_INDEX_3 = "2"  # Digunakan oleh bot_emulator_reject_input3
 
 # Port Koneksi ADB / uiautomator2
 EMULATOR_PORTS_1 = ["5555", "5555"] # Instance 1 (idpel, meter, reject_list, reject_input)
-EMULATOR_PORTS_2 = ["5557", "5557"] # Instance 2 (idpel2, meter2)
+EMULATOR_PORTS_2 = ["5557", "5557"] # Instance 2 (idpel2, meter2, reject_input2)
+EMULATOR_PORTS_3 = ["5559", "5559"] # Instance 3 (reject_input3)
 
 # ------------------------------------------------------------------------------
 # 2. FILE & DIRECTORY PATHS
 # ------------------------------------------------------------------------------
 # File Excel sumber data
-EXCEL_FILE_1 = "data_tugas.xlsx"       # Instance 1: bot_emulator_idpel, bot_emulator_meter, ss_gmaps
-EXCEL_FILE_2 = "data_tugas2.xlsx"      # Instance 2: bot_emulator_idpel2, bot_emulator_meter2, ss_gmaps2
-EXCEL_FILE_REJECT = "data_reject.xlsx" # Reject Input: bot_emulator_reject_input
+EXCEL_FILE_1 = "data_tugas.xlsx"          # Instance 1: bot_emulator_idpel, bot_emulator_meter, ss_gmaps
+EXCEL_FILE_2 = "data_tugas2.xlsx"         # Instance 2: bot_emulator_idpel2, bot_emulator_meter2, ss_gmaps2
+EXCEL_FILE_3 = "data_tugas3.xlsx"         # Instance 3
+EXCEL_FILE_REJECT = "data_reject.xlsx"    # Reject Input: bot_emulator_reject_input
+EXCEL_FILE_REJECT_2 = "data_reject2.xlsx" # Reject Input 2: bot_emulator_reject_input2
+EXCEL_FILE_REJECT_3 = "data_reject3.xlsx" # Reject Input 3: bot_emulator_reject_input3
 
 # Path Folder Foto (Lokal PC)
 FOTO_DIRECTORY = r"C:\Users\batan\OneDrive\Documents\XuanZhi9\Pictures"
