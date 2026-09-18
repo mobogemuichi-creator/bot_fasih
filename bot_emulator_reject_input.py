@@ -3522,21 +3522,51 @@ def proses_update_reject_nik():
             ketuk_tab_galat_dengan_verifikasi(max_retry=3)
             time.sleep(SLEEP_SHORT)
 
-            # Cek apakah ada kata yang mengandung "Nomor Meter" atau "ID pelanggan PLN"
-            try:
-                xml_galat = d.dump_hierarchy().lower()
-            except Exception:
-                xml_galat = ""
+            # Cek apakah ada kata yang mengandung "Nomor Meter" atau "ID pelanggan PLN" (dengan retry max 3x dan variasi kata kunci)
+            print(f"[GALAT CHECK] Memeriksa keberadaan galat 'Nomor Meter' / 'ID pelanggan PLN' untuk IDPEL {idpel} (max 3x percobaan)...")
+            is_nomor_meter_galat = False
+            detected_keyword = ""
 
-            is_nomor_meter_galat = (
-                "nomor meter" in xml_galat or 
-                "id pelanggan pln" in xml_galat or
-                check_exists(d(textContains="Nomor Meter")) or
-                check_exists(d(textContains="ID pelanggan PLN"))
-            )
+            for check_attempt in range(1, 4):
+                try:
+                    xml_galat = d.dump_hierarchy().lower()
+                except Exception:
+                    xml_galat = ""
+
+                # Daftar kata kunci variasi yang menandakan error Nomor Meter / ID Pelanggan
+                keywords = [
+                    "nomor meter", "no meter", "nometer", "meteran",
+                    "id pelanggan pln", "id pelanggan", "idpel",
+                    "101a", "101b", "rincian 101", "tidak sama"
+                ]
+
+                for kw in keywords:
+                    if kw in xml_galat:
+                        is_nomor_meter_galat = True
+                        detected_keyword = kw
+                        break
+
+                if not is_nomor_meter_galat:
+                    if (check_exists(d(textContains="Nomor Meter")) or
+                        check_exists(d(textContains="ID pelanggan PLN")) or
+                        check_exists(d(textContains="ID Pelanggan")) or
+                        check_exists(d(textContains="101a")) or
+                        check_exists(d(textContains="101b")) or
+                        check_exists(d(descriptionContains="Nomor Meter")) or
+                        check_exists(d(descriptionContains="ID Pelanggan")) or
+                        check_exists(d.xpath("//*[contains(@text, '101a') or contains(@text, '101b') or contains(@content-desc, '101a') or contains(@content-desc, '101b')]"))):
+                        is_nomor_meter_galat = True
+                        detected_keyword = "selector/xpath match"
+
+                if is_nomor_meter_galat:
+                    print(f"[GALAT CHECK] [TRUE] Terdeteksi galat '{detected_keyword}' pada percobaan ke-{check_attempt} untuk IDPEL {idpel}!")
+                    break
+                else:
+                    if check_attempt < 3:
+                        print(f"[GALAT CHECK] [RETRY] Percobaan {check_attempt}/3 belum mendeteksi teks galat. Menunggu 0.5s...")
+                        time.sleep(0.5)
 
             if is_nomor_meter_galat:
-                print(f"[GALAT CHECK] [TRUE] Terdeteksi galat 'Nomor Meter' / 'ID pelanggan PLN' untuk IDPEL {idpel}!")
                 print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
                 ketuk("Dismiss", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
@@ -3547,7 +3577,7 @@ def proses_update_reject_nik():
                 # Scroll ke bawah sampai ketemu "Cek ID Pelanggan" dan ketuk tombolnya
                 eksekusi_ketuk_cek_id_pelanggan(arah_awal="down")
             else:
-                print("[GALAT CHECK] [FALSE] Tidak terdeteksi kata 'Nomor Meter' / 'ID pelanggan PLN'. Menutup modal...")
+                print("[GALAT CHECK] [FALSE] Tidak terdeteksi kata 'Nomor Meter' / 'ID pelanggan PLN' setelah 3x pengecekan. Menutup modal...")
                 print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
                 ketuk("Dismiss", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
