@@ -3524,27 +3524,25 @@ def proses_update_reject_nik():
                         print(f"[BLOK I] [WARNING] Gagal swipe: {e}")
                         break
 
-                # Scan halaman: jika menemukan text "rincian 101b tidak sama dengan hasil cek nomor meter"
-                print("[BLOK I] Memeriksa teks 'rincian 101b tidak sama dengan hasil cek nomor meter'...")
+                # Scan halaman: jika menemukan text "tidak sama"
+                print("[BLOK I] Memeriksa teks 'tidak sama' pada halaman...")
                 try:
                     xml_page = d.dump_hierarchy().lower()
                 except Exception:
                     xml_page = ""
 
-                target_warning = "rincian 101b tidak sama dengan hasil cek nomor meter"
                 is_mismatch_101b = (
-                    target_warning in xml_page or
-                    ("101b" in xml_page and "tidak sama dengan" in xml_page and "cek nomor meter" in xml_page) or
-                    check_exists(d(textContains="rincian 101b tidak sama dengan hasil cek nomor meter")) or
-                    check_exists(d(descriptionContains="rincian 101b tidak sama dengan hasil cek nomor meter")) or
-                    check_exists(d(textMatches="(?i).*rincian 101b tidak sama dengan.*"))
+                    "tidak sama" in xml_page or
+                    check_exists(d(textContains="tidak sama")) or
+                    check_exists(d(descriptionContains="tidak sama")) or
+                    check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'tidak sama') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'tidak sama')]"))
                 )
 
                 if is_mismatch_101b:
-                    print(f"[BLOK I] [MATCH] Terdeteksi teks '{target_warning}'! Mengetuk tombol 'Cek ID Pelanggan'...")
+                    print("[BLOK I] [MATCH] Terdeteksi teks 'tidak sama'! Mengetuk tombol 'Cek ID Pelanggan'...")
                     eksekusi_ketuk_cek_id_pelanggan(arah_awal="up")
                 else:
-                    print("[BLOK I] Tidak terdeteksi pesan galat 101b. Melanjutkan ke data alamat...")
+                    print("[BLOK I] Tidak terdeteksi teks 'tidak sama'. Melanjutkan ke data alamat...")
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
 
