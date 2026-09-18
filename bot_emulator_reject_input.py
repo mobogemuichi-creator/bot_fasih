@@ -3207,6 +3207,89 @@ def ketuk_ok_submit_diproses(max_attempts=10):
     return True
 
 
+def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
+    """
+    Helper untuk mencari tombol 'Cek ID Pelanggan', memastikan posisi aman di layar,
+    mengetuk tombol tersebut, dan menunggu loading selesai.
+    """
+    print("[BLOK I] Men-scroll secara dinamis ke tombol 'Cek ID Pelanggan'...")
+    try:
+        d(scrollable=True).scroll.to(text="Cek ID Pelanggan")
+        time.sleep(0.3)
+    except Exception:
+        pass
+
+    d_info = d.info
+    screen_h = d_info.get("displayHeight", 960)
+    screen_w = d_info.get("displayWidth", 540)
+
+    # Pastikan tombol benar-benar terlihat di viewport yang aman (bukan di luar/terpotong navbar)
+    btn_cek = None
+    for swipe_cek in range(1, 10):
+        btn_cek = d(text="Cek ID Pelanggan")
+        if not btn_cek.exists():
+            btn_cek = d(textContains="Cek ID Pelanggan")
+        if not btn_cek.exists():
+            btn_cek = d(descriptionContains="Cek ID Pelanggan")
+
+        if btn_cek.exists():
+            b = btn_cek.info.get("bounds", {})
+            top = b.get("top", 0)
+            bottom = b.get("bottom", 0)
+            # Batas aman: tombol tidak tertutup statusbar atas (top >= 150) dan tidak tertutup navbar bawah (bottom <= screen_h - 120)
+            if 150 <= top and bottom <= (screen_h - 120):
+                print(f"[BLOK I] Tombol 'Cek ID Pelanggan' berada di posisi aman layar (bounds: [{b.get('left')},{top}][{b.get('right')},{bottom}]).")
+                break
+            elif top > (screen_h - 120):
+                print(f"[BLOK I] Tombol 'Cek ID Pelanggan' masih di bawah layar (top={top}, screen_h={screen_h}), swipe ke bawah #{swipe_cek}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
+                time.sleep(0.2)
+            elif bottom < 150:
+                print(f"[BLOK I] Tombol 'Cek ID Pelanggan' terlalu di atas (bottom={bottom}), swipe ke atas #{swipe_cek}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.15)
+                time.sleep(0.2)
+        else:
+            if arah_awal == "up":
+                print(f"[BLOK I] Tombol 'Cek ID Pelanggan' belum terlihat, swipe ke atas #{swipe_cek}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.15)
+            else:
+                print(f"[BLOK I] Tombol 'Cek ID Pelanggan' belum terlihat, swipe ke bawah #{swipe_cek}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
+            time.sleep(0.2)
+
+    # Eksekusi ketuk dengan koordinat tengah (center bounds)
+    sukses_ketuk_cek = False
+    if btn_cek and btn_cek.exists():
+        b = btn_cek.info.get("bounds", {})
+        cx = (b.get("left", 0) + b.get("right", 0)) // 2
+        cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+        if 0 < cx < screen_w and 0 < cy < screen_h:
+            print(f"[BLOK I] Mengetuk tombol 'Cek ID Pelanggan' pada titik tengah ({cx}, {cy})...")
+            d.click(cx, cy)
+            sukses_ketuk_cek = True
+        else:
+            btn_cek.click()
+            sukses_ketuk_cek = True
+
+    if not sukses_ketuk_cek:
+        print("[BLOK I] Mengetuk tombol 'Cek ID Pelanggan' via ketuk()...")
+        ketuk("Cek ID Pelanggan")
+
+    # Cek apakah progress bar / loading muncul. Jika belum muncul dalam 0.5 detik, ketuk ulang (retry)
+    time.sleep(0.5)
+    progress_el = d(resourceId="id.go.bpsfasih:id/card_progress")
+    if not progress_el.exists():
+        progress_el = d(className="android.widget.ProgressBar")
+
+    if not progress_el.exists():
+        print("[BLOK I] [RETRY] Loading belum terdeteksi, mencoba mengetuk ulang 'Cek ID Pelanggan'...")
+        ketuk("Cek ID Pelanggan")
+
+    print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
+    tunggu_loading(timeout=30)
+    time.sleep(SLEEP_SHORT)
+
+
 
 def proses_update_reject_nik():
     """Fungsi utama memproses list data reject untuk update NIK"""
@@ -3399,78 +3482,7 @@ def proses_update_reject_nik():
                 time.sleep(SLEEP_SHORT)
 
                 # Scroll ke bawah sampai ketemu "Cek ID Pelanggan" dan ketuk tombolnya
-                print("[BLOK I] Men-scroll secara dinamis ke tombol 'Cek ID Pelanggan'...")
-                try:
-                    d(scrollable=True).scroll.to(text="Cek ID Pelanggan")
-                    time.sleep(0.3)
-                except Exception:
-                    pass
-
-                d_info = d.info
-                screen_h = d_info.get("displayHeight", 960)
-                screen_w = d_info.get("displayWidth", 540)
-
-                # Pastikan tombol benar-benar terlihat di viewport yang aman (bukan di luar/terpotong navbar)
-                btn_cek = None
-                for swipe_cek in range(1, 10):
-                    btn_cek = d(text="Cek ID Pelanggan")
-                    if not btn_cek.exists():
-                        btn_cek = d(textContains="Cek ID Pelanggan")
-                    if not btn_cek.exists():
-                        btn_cek = d(descriptionContains="Cek ID Pelanggan")
-
-                    if btn_cek.exists():
-                        b = btn_cek.info.get("bounds", {})
-                        top = b.get("top", 0)
-                        bottom = b.get("bottom", 0)
-                        # Batas aman: tombol tidak tertutup statusbar atas (top >= 150) dan tidak tertutup navbar bawah (bottom <= screen_h - 120)
-                        if 150 <= top and bottom <= (screen_h - 120):
-                            print(f"[BLOK I] Tombol 'Cek ID Pelanggan' berada di posisi aman layar (bounds: [{b.get('left')},{top}][{b.get('right')},{bottom}]).")
-                            break
-                        elif top > (screen_h - 120):
-                            print(f"[BLOK I] Tombol 'Cek ID Pelanggan' masih di bawah layar (top={top}, screen_h={screen_h}), swipe ke bawah #{swipe_cek}...")
-                            swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
-                            time.sleep(0.2)
-                        elif bottom < 150:
-                            print(f"[BLOK I] Tombol 'Cek ID Pelanggan' terlalu di atas (bottom={bottom}), swipe ke atas #{swipe_cek}...")
-                            swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.15)
-                            time.sleep(0.2)
-                    else:
-                        print(f"[BLOK I] Tombol 'Cek ID Pelanggan' belum terlihat, swipe ke bawah #{swipe_cek}...")
-                        swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
-                        time.sleep(0.2)
-
-                # Eksekusi ketuk dengan koordinat tengah (center bounds)
-                sukses_ketuk_cek = False
-                if btn_cek and btn_cek.exists():
-                    b = btn_cek.info.get("bounds", {})
-                    cx = (b.get("left", 0) + b.get("right", 0)) // 2
-                    cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
-                    if 0 < cx < screen_w and 0 < cy < screen_h:
-                        print(f"[BLOK I] Mengetuk tombol 'Cek ID Pelanggan' pada titik tengah ({cx}, {cy})...")
-                        d.click(cx, cy)
-                        sukses_ketuk_cek = True
-                    else:
-                        btn_cek.click()
-                        sukses_ketuk_cek = True
-                
-                if not sukses_ketuk_cek:
-                    print("[BLOK I] Mengetuk tombol 'Cek ID Pelanggan' via ketuk()...")
-                    ketuk("Cek ID Pelanggan")
-
-                # Cek apakah progress bar / loading muncul. Jika belum muncul dalam 0.5 detik, ketuk ulang (retry)
-                time.sleep(0.5)
-                progress_el = d(resourceId="id.go.bpsfasih:id/card_progress")
-                if not progress_el.exists():
-                    progress_el = d(className="android.widget.ProgressBar")
-
-                if not progress_el.exists():
-                    print("[BLOK I] [RETRY] Loading belum terdeteksi, mencoba mengetuk ulang 'Cek ID Pelanggan'...")
-                    ketuk("Cek ID Pelanggan")
-
-                print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
-                tunggu_loading(timeout=30)
-                time.sleep(SLEEP_SHORT)
+                eksekusi_ketuk_cek_id_pelanggan(arah_awal="down")
             else:
                 print("[GALAT CHECK] [FALSE] Tidak terdeteksi kata 'Nomor Meter' / 'ID pelanggan PLN'. Menutup modal...")
                 print("[DISMISS] Mengetuk tombol 'Dismiss' pertama (modal Galat)...")
@@ -3479,6 +3491,60 @@ def proses_update_reject_nik():
                 print("[DISMISS] Mengetuk tombol 'Dismiss' kedua (modal Kirim)...")
                 ketuk("Dismiss", sleep_after=SLEEP_SHORT)
                 time.sleep(SLEEP_SHORT)
+
+                # Performing dynamic swipe sampai ketemu tombol "cek nomor meter"
+                print("[BLOK I] Memulai scan & dynamic swipe mencari tombol 'Cek Nomor Meter'...")
+                d_info = d.info
+                screen_h = d_info.get("displayHeight", 960)
+                screen_w = d_info.get("displayWidth", 540)
+                max_swipes_meter = 15
+                btn_meter_found = False
+
+                for swipe_idx in range(1, max_swipes_meter + 1):
+                    # Cek apakah tombol Cek Nomor Meter sudah terlihat di layar
+                    btn_meter = d(text="Cek Nomor Meter")
+                    if not btn_meter.exists():
+                        btn_meter = d(textContains="Cek Nomor Meter")
+                    if not btn_meter.exists():
+                        btn_meter = d(descriptionContains="Cek Nomor Meter")
+                    if not btn_meter.exists():
+                        btn_meter = d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cek nomor meter') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cek nomor meter')]")
+
+                    if check_exists(btn_meter):
+                        print(f"[BLOK I] [SUKSES] Tombol 'Cek Nomor Meter' ditemukan di layar (pemeriksaan ke-{swipe_idx}).")
+                        btn_meter_found = True
+                        break
+
+                    # Jika belum ditemukan, lakukan dynamic swipe ke bawah
+                    print(f"[BLOK I] Performing dynamic swipe {swipe_idx} (540, 800 -> 540, 155)...")
+                    try:
+                        swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
+                        time.sleep(0.3)
+                    except Exception as e:
+                        print(f"[BLOK I] [WARNING] Gagal swipe: {e}")
+                        break
+
+                # Scan halaman: jika menemukan text "rincian 101b tidak sama dengan hasil cek nomor meter"
+                print("[BLOK I] Memeriksa teks 'rincian 101b tidak sama dengan hasil cek nomor meter'...")
+                try:
+                    xml_page = d.dump_hierarchy().lower()
+                except Exception:
+                    xml_page = ""
+
+                target_warning = "rincian 101b tidak sama dengan hasil cek nomor meter"
+                is_mismatch_101b = (
+                    target_warning in xml_page or
+                    ("101b" in xml_page and "tidak sama dengan" in xml_page and "cek nomor meter" in xml_page) or
+                    check_exists(d(textContains="rincian 101b tidak sama dengan hasil cek nomor meter")) or
+                    check_exists(d(descriptionContains="rincian 101b tidak sama dengan hasil cek nomor meter")) or
+                    check_exists(d(textMatches="(?i).*rincian 101b tidak sama dengan.*"))
+                )
+
+                if is_mismatch_101b:
+                    print(f"[BLOK I] [MATCH] Terdeteksi teks '{target_warning}'! Mengetuk tombol 'Cek ID Pelanggan'...")
+                    eksekusi_ketuk_cek_id_pelanggan(arah_awal="up")
+                else:
+                    print("[BLOK I] Tidak terdeteksi pesan galat 101b. Melanjutkan ke data alamat...")
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
 
