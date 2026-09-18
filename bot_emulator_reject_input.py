@@ -629,28 +629,11 @@ def perbaiki_galat_koordinat_foto(skip_ketuk_galat=False):
     # 1. Ketuk teks "GALAT" pada modal ringkasan validasi (skip jika sudah diketuk sebelumnya)
     if not skip_ketuk_galat:
         print("[GALAT FIX] Mengetuk 'GALAT' pada modal ringkasan validasi...")
-        galat_clicked = False
-        try:
-            galat_el = d(textContains="GALAT")
-            if galat_el.exists(timeout=3):
-                galat_el.click()
-                galat_clicked = True
-        except Exception:
-            pass
-        if not galat_clicked:
-            try:
-                xp = d.xpath("//*[contains(@text, 'GALAT') or contains(@content-desc, 'GALAT')]")
-                if xp.exists:
-                    xp.click()
-                    galat_clicked = True
-            except Exception:
-                pass
-
-        if not galat_clicked:
-            print("[GALAT FIX] Tidak bisa mengetuk 'GALAT'. Membatalkan perbaikan.")
+        sukses_galat = ketuk_tab_galat_dengan_verifikasi(max_retry=3)
+        if not sukses_galat:
+            print("[GALAT FIX] Tombol 'Lihat' tidak muncul setelah ketuk 'GALAT'. Membatalkan perbaikan.")
             return False
-
-        time.sleep(SLEEP_MEDIUM)
+        time.sleep(SLEEP_SHORT)
     else:
         print("[GALAT FIX] Skip ketuk 'GALAT' (sudah diketuk sebelumnya).")
 
@@ -1698,6 +1681,86 @@ def ketuk(target_text, exact=False, sleep_after=SLEEP_SHORT):
     if sleep_after > 0:
         time.sleep(sleep_after)
     return success
+
+
+def ketuk_tab_galat_dengan_verifikasi(max_retry=3):
+    """
+    Mengetuk tab/teks 'GALAT' pada modal validasi dan memastikan apakah tombol 'Lihat'
+    sudah muncul di layar. Jika tombol 'Lihat' belum muncul, ulangi pengetukan maksimal max_retry kali.
+    """
+    for attempt in range(1, max_retry + 1):
+        print(f"[KLIK GALAT] Mencari dan mengetuk tab 'GALAT' (Percobaan {attempt}/{max_retry})...")
+
+        # 1. Prioritaskan klik koordinat tengah bounds jika elemen terdeteksi
+        galat_clicked = False
+        try:
+            galat_el = d(textContains="GALAT")
+            if not galat_el.exists():
+                galat_el = d(descriptionContains="GALAT")
+            if galat_el.exists():
+                b = galat_el.info.get("bounds", {})
+                cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                if cx > 0 and cy > 0:
+                    d.click(cx, cy)
+                    galat_clicked = True
+        except Exception:
+            pass
+
+        # 2. Coba selector umum jika belum berhasil diklik
+        if not galat_clicked:
+            try:
+                galat_el = d(textContains="GALAT")
+                if not galat_el.exists():
+                    galat_el = d(descriptionContains="GALAT")
+                if galat_el.exists():
+                    galat_el.click()
+                    galat_clicked = True
+            except Exception:
+                pass
+
+        # 3. Fallback XPath / fungsi ketuk()
+        if not galat_clicked:
+            try:
+                xp = d.xpath("//*[contains(@text, 'GALAT') or contains(@content-desc, 'GALAT')]")
+                if xp.exists:
+                    xp.click()
+                    galat_clicked = True
+            except Exception:
+                pass
+
+        if not galat_clicked:
+            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+
+        time.sleep(0.5)
+
+        # 4. Verifikasi apakah tombol 'Lihat' sudah muncul di layar
+        btn_lihat = d(text="Lihat")
+        if not btn_lihat.exists():
+            btn_lihat = d(textContains="Lihat")
+        if not btn_lihat.exists():
+            btn_lihat = d(descriptionContains="Lihat")
+        if not btn_lihat.exists():
+            btn_lihat = d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'lihat') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'lihat')]")
+
+        is_lihat_muncul = check_exists(btn_lihat)
+        if not is_lihat_muncul:
+            try:
+                xml_check = d.dump_hierarchy().lower()
+                if "lihat" in xml_check:
+                    is_lihat_muncul = True
+            except Exception:
+                pass
+
+        if is_lihat_muncul:
+            print(f"[KLIK GALAT] [SUKSES] Tombol 'Lihat' terdeteksi (Percobaan {attempt}/{max_retry})! Tab 'GALAT' berhasil terbuka.")
+            return True
+        else:
+            print(f"[KLIK GALAT] [RETRY] Tombol 'Lihat' belum muncul setelah ketuk 'GALAT' (Percobaan {attempt}/{max_retry}). Mengulangi...")
+            time.sleep(0.4)
+
+    print(f"[KLIK GALAT] [WARNING] Tombol 'Lihat' belum terdeteksi setelah {max_retry}x percobaan.")
+    return False
 
 
 def check_dan_tutup_pengaturan():
@@ -3454,9 +3517,9 @@ def proses_update_reject_nik():
             ketuk("Kirim", sleep_after=SLEEP_SHORT)
             time.sleep(SLEEP_SHORT)
 
-            # Ketuk teks yang mengandung kata "GALAT"
+            # Ketuk teks yang mengandung kata "GALAT" dengan verifikasi tombol "Lihat" (retry max 3x)
             print("[VALIDASI AWAL] Mengetuk 'GALAT' pada modal validasi...")
-            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+            ketuk_tab_galat_dengan_verifikasi(max_retry=3)
             time.sleep(SLEEP_SHORT)
 
             # Cek apakah ada kata yang mengandung "Nomor Meter" atau "ID pelanggan PLN"
@@ -3753,8 +3816,8 @@ def proses_update_reject_nik():
                     sukses_baris = True
                     break
 
-            # Ketuk teks yang mengandung kata "GALAT"
-            ketuk("GALAT", exact=False, sleep_after=SLEEP_SHORT)
+            # Ketuk teks yang mengandung kata "GALAT" dengan verifikasi tombol "Lihat" (retry max 3x)
+            ketuk_tab_galat_dengan_verifikasi(max_retry=3)
             time.sleep(SLEEP_SHORT)
 
             # Cek jika muncul kata "Koordinat lokasi meteran" atau "Foto rumah tampak depan"
