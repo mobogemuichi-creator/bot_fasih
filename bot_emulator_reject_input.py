@@ -3398,11 +3398,79 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
 
     if not progress_el.exists():
         print("[BLOK I] [RETRY] Loading belum terdeteksi, mencoba mengetuk ulang 'Cek ID Pelanggan'...")
-        ketuk("Cek ID Pelanggan")
+        if btn_cek and btn_cek.exists():
+            btn_cek.click()
+        else:
+            ketuk("Cek ID Pelanggan")
 
     print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
     tunggu_loading(timeout=30)
     time.sleep(SLEEP_SHORT)
+
+    # Scan apakah muncul teks mengandung "Rincian 101a tidak sama dengan hasil Cek ID Pelanggan"
+    max_retry_rincian = 10
+    for try_rincian in range(1, max_retry_rincian + 1):
+        try:
+            xml_cur = d.dump_hierarchy().lower()
+        except Exception:
+            xml_cur = ""
+
+        ada_rincian_101a = (
+            "rincian 101a tidak sama" in xml_cur or
+            "rincian 101a" in xml_cur or
+            check_exists(d(textContains="Rincian 101a tidak sama dengan hasil Cek ID Pelanggan")) or
+            check_exists(d(textContains="Rincian 101a")) or
+            check_exists(d(descriptionContains="Rincian 101a")) or
+            check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a')]"))
+        )
+
+        if not ada_rincian_101a:
+            if try_rincian > 1:
+                print(f"[BLOK I] [SUKSES] Pesan 'Rincian 101a' sudah hilang setelah {try_rincian - 1}x ketuk ulang. Melanjutkan proses...")
+            break
+
+        print(f"[BLOK I] [WARNING] Terdeteksi pesan mengandung 'Rincian 101a tidak sama dengan hasil Cek ID Pelanggan' (pemeriksaan ke-{try_rincian}/{max_retry_rincian}). Mengetuk kembali 'Cek ID Pelanggan'...")
+
+        # Cari dan pastikan tombol 'Cek ID Pelanggan' dapat diketuk
+        btn_cek_rincian = d(className="android.widget.Button", text="Cek ID Pelanggan")
+        if not check_exists(btn_cek_rincian):
+            btn_cek_rincian = d(text="Cek ID Pelanggan")
+        if not check_exists(btn_cek_rincian):
+            btn_cek_rincian = d(textContains="Cek ID Pelanggan")
+        if not check_exists(btn_cek_rincian):
+            btn_cek_rincian = d(descriptionContains="Cek ID Pelanggan")
+
+        if not check_exists(btn_cek_rincian):
+            try:
+                d(scrollable=True).scroll.to(text="Cek ID Pelanggan")
+                time.sleep(0.3)
+            except Exception:
+                pass
+            btn_cek_rincian = d(className="android.widget.Button", text="Cek ID Pelanggan") or d(text="Cek ID Pelanggan")
+
+        sukses_ketuk_rincian = False
+        if check_exists(btn_cek_rincian):
+            try:
+                b = btn_cek_rincian.info.get("bounds", {})
+                cx = (b.get("left", 0) + b.get("right", 0)) // 2
+                cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+                if 0 < cx < screen_w and 0 < cy < screen_h:
+                    print(f"[BLOK I] Mengetuk tombol 'Cek ID Pelanggan' pada ({cx}, {cy})...")
+                    d.click(cx, cy)
+                    sukses_ketuk_rincian = True
+                else:
+                    btn_cek_rincian.click()
+                    sukses_ketuk_rincian = True
+            except Exception:
+                pass
+
+        if not sukses_ketuk_rincian:
+            ketuk("Cek ID Pelanggan")
+
+        time.sleep(0.5)
+        print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
+        tunggu_loading(timeout=30)
+        time.sleep(SLEEP_SHORT)
 
 
 
