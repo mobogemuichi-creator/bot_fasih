@@ -17,6 +17,7 @@ import datetime
 from konfigurasi import (
     LDPLAYER_ADB,
     EMULATOR_PORTS_1 as EMULATOR_PORTS,
+    FOTO_DIRECTORY,
     SLEEP_SHORT,
     SLEEP_MEDIUM,
     SLEEP_LONG,
@@ -90,6 +91,115 @@ def simpan_ke_txt(idpel, status_exist, txt_path="cek_nik.txt"):
     except Exception as e:
         print(f"[ERROR TXT] Gagal menyimpan ke '{txt_path}': {e}")
         return False
+
+
+def capture_ldplayer_window(output_path):
+    """
+    Menangkap tampilan layar langsung dari RenderWindow LDPlayer di Windows.
+    Metode ini bekerja 100% andal dan tidak terpengaruh oleh pembatasan FLAG_SECURE
+    pada halaman kuesioner Fasih (yang menyebabkan screencap Android bernilai 0 byte / hitam).
+    """
+    import ctypes
+    import ctypes.wintypes
+    import struct
+    from PIL import Image
+
+    user32 = ctypes.windll.user32
+    gdi32 = ctypes.windll.gdi32
+
+    # Akses ke WinSta0 dan Desktop Default (agar kompatibel jika dipanggil dari berbagai konteks terminal)
+    try:
+        hwinsta = user32.OpenWindowStationW('WinSta0', False, 0x037F)
+        if hwinsta:
+            user32.SetProcessWindowStation(hwinsta)
+        hdesk = user32.OpenDesktopW('Default', 0, False, 0x01FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+    except Exception:
+        pass
+
+    # Cari window LDPlayerMainFrame
+    hwnd = user32.FindWindowExW(0, 0, 'LDPlayerMainFrame', None)
+    if not hwnd:
+        hwnd = user32.FindWindowW(None, 'LDPlayer-1-0')
+    if not hwnd:
+        return False
+
+    # Cari sub-window RenderWindow (TheRender)
+    render = user32.FindWindowExW(hwnd, 0, 'RenderWindow', None)
+    target_wnd = render if render else hwnd
+
+    rect = ctypes.wintypes.RECT()
+    user32.GetClientRect(target_wnd, ctypes.byref(rect))
+    w = rect.right - rect.left
+    h = rect.bottom - rect.top
+    if w <= 0 or h <= 0:
+        return False
+
+    hdc = user32.GetDC(target_wnd)
+    if not hdc:
+        return False
+
+    memdc = gdi32.CreateCompatibleDC(hdc)
+    bmp = gdi32.CreateCompatibleBitmap(hdc, w, h)
+    gdi32.SelectObject(memdc, bmp)
+
+    # PW_RENDERFULLCONTENT = 2
+    user32.PrintWindow(target_wnd, memdc, 2)
+
+    bmi = ctypes.create_string_buffer(40)
+    struct.pack_into('<IiiHHIIIIII', bmi, 0, 40, w, -h, 1, 32, 0, w * h * 4, 0, 0, 0, 0)
+    buf = ctypes.create_string_buffer(w * h * 4)
+    gdi32.GetDIBits(memdc, bmp, 0, h, buf, bmi, 0)
+
+    img = Image.frombuffer('RGBA', (w, h), buf.raw, 'raw', 'BGRA', 0, 1).convert('RGB')
+    img.save(output_path)
+
+    gdi32.DeleteObject(bmp)
+    gdi32.DeleteDC(memdc)
+    user32.ReleaseDC(target_wnd, hdc)
+    return True
+
+
+def ambil_screenshot_idpel(idpel, folder_pc=FOTO_DIRECTORY):
+    """
+    Mengambil screenshot tampilan respon IDPEL,
+    menyimpannya dengan nama <idpel>.png ke shared folder LDPlayer (PC dan Android),
+    sehingga file langsung dapat dilihat lewat PC.
+    """
+    target_folder_pc = folder_pc
+    if not target_folder_pc or not os.path.exists(target_folder_pc):
+        fallback_pc = r"C:\Users\BaliAga\Documents\XuanZhi9\Pictures"
+        if os.path.exists(fallback_pc):
+            target_folder_pc = fallback_pc
+        else:
+            target_folder_pc = os.path.join(os.getcwd(), "screenshots")
+            os.makedirs(target_folder_pc, exist_ok=True)
+
+    file_name = f"{idpel}.png"
+    pc_path = os.path.join(target_folder_pc, file_name)
+
+    print(f"[SCREENSHOT] Mengambil screenshot untuk IDPEL: {idpel}...")
+
+    # 1. Metode Utama: Tangkap langsung dari RenderWindow LDPlayer (Bypass FLAG_SECURE & anti-0-byte)
+    try:
+        if capture_ldplayer_window(pc_path):
+            if os.path.exists(pc_path) and os.path.getsize(pc_path) > 1000:
+                print(f"[SCREENSHOT] Berhasil disimpan di Shared Folder: '{pc_path}' ({os.path.getsize(pc_path)} bytes)")
+                return True
+    except Exception as err_wnd:
+        print(f"[WARNING] Gagal capture window LDPlayer: {err_wnd}")
+
+    # 2. Fallback: uiautomator2 d.screenshot
+    try:
+        d.screenshot(pc_path)
+        if os.path.exists(pc_path) and os.path.getsize(pc_path) > 1000:
+            print(f"[SCREENSHOT] Berhasil disimpan via uiautomator2: '{pc_path}' ({os.path.getsize(pc_path)} bytes)")
+            return True
+    except Exception as e:
+        print(f"[WARNING] Gagal simpan screenshot via d.screenshot: {e}")
+
+    return False
 
 
 def proses_cek_idpel(excel_path="data_cek.xlsx", txt_path="cek_nik.txt"):
@@ -336,6 +446,9 @@ def proses_cek_idpel(excel_path="data_cek.xlsx", txt_path="cek_nik.txt"):
                 else:
                     print(f"[WARNING] Status respon khusus tidak terdeteksi secara eksplisit untuk IDPEL {idpel}.")
                     status_exist = "BELUM TERDAFTAR FASIH"
+
+                # Ambil screenshot tampilan respon & simpan dengan nama IDPEL ke shared folder LDPlayer / PC
+                ambil_screenshot_idpel(idpel)
 
                 # Simpan ke cek_nik.txt & tambahkan ke memori
                 simpan_ke_txt(idpel, status_exist, txt_path)

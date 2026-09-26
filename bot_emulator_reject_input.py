@@ -2274,6 +2274,58 @@ def cek_nik_tidak_valid(d_dev):
     return False, ""
 
 
+def cek_nik_tidak_ditemukan(d_dev):
+    """
+    Melakukan scan halaman untuk mengonfirmasi apakah NIK tidak ditemukan:
+    - Teks 'NIK TIDAK DITEMUKAN' / 'nik tidak ditemukan' (case-insensitive) di text atau content-desc
+    - Card / section 'Hasil Pemadanan NIK' yang berstatus 'TIDAK DITEMUKAN'
+    Returns:
+        tuple (is_not_found: bool, pesan: str)
+    """
+    try:
+        # 1. Cek langsung teks yang mengandung "NIK TIDAK DITEMUKAN"
+        keywords = [
+            "NIK TIDAK DITEMUKAN",
+            "NIK Tidak Ditemukan",
+            "nik tidak ditemukan",
+            "Nik Tidak Ditemukan"
+        ]
+        for kw in keywords:
+            if check_exists(d_dev(textContains=kw)):
+                txt = d_dev(textContains=kw).info.get('text', '') or kw
+                return True, txt
+            if check_exists(d_dev(descriptionContains=kw)):
+                desc = d_dev(descriptionContains=kw).info.get('contentDescription', '') or kw
+                return True, desc
+
+        # 2. XPath case-insensitive untuk teks yang memuat 'nik tidak ditemukan'
+        xp_nik = "//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'nik tidak ditemukan') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'nik tidak ditemukan')]"
+        if check_exists(d_dev.xpath(xp_nik)):
+            nodes = d_dev.xpath(xp_nik).all()
+            if nodes:
+                txt = nodes[0].text if hasattr(nodes[0], 'text') and nodes[0].text else "NIK TIDAK DITEMUKAN"
+                return True, txt
+
+        # 3. Cek hasil pemadanan NIK dengan status 'TIDAK DITEMUKAN'
+        has_hasil_pemadanan = (
+            check_exists(d_dev(textContains="Hasil Pemadanan NIK")) or
+            check_exists(d_dev(descriptionContains="Hasil Pemadanan NIK"))
+        )
+        if has_hasil_pemadanan:
+            if check_exists(d_dev(textContains="TIDAK DITEMUKAN")) or check_exists(d_dev(descriptionContains="TIDAK DITEMUKAN")):
+                return True, "Hasil Pemadanan NIK: TIDAK DITEMUKAN"
+
+        # 4. Cek teks persis atau mengandung "TIDAK DITEMUKAN" di layar
+        if check_exists(d_dev(text="TIDAK DITEMUKAN")) or check_exists(d_dev(description="TIDAK DITEMUKAN")):
+            return True, "TIDAK DITEMUKAN"
+
+    except Exception as e:
+        print(f"[SCAN NIK] Exception saat memindai NIK tidak ditemukan: {e}")
+
+    return False, ""
+
+
+
 def cari_dan_scroll_ke_tombol_cek_nik(max_swipes=10):
     """
     Mencari terlebih dahulu tombol 'Cek NIK' sebelum mengetuknya.
@@ -3939,9 +3991,10 @@ def proses_update_reject_nik():
             if not nama_terisi_sukses:
                 print(f"[SCAN NAMA] [ERROR] Field '201. Nama penghuni' tetap gagal terisi setelah {max_nama_attempts}x percobaan.")
 
-            # Pengisian '202. NIK penghuni' dan 'Cek NIK' dengan verifikasi scan halaman untuk 'NIK tidak valid'
+            # Pengisian '202. NIK penghuni' dan 'Cek NIK' dengan verifikasi scan halaman untuk 'NIK tidak valid' dan 'NIK TIDAK DITEMUKAN'
             max_nik_attempts = 5
             nik_sukses = False
+            nik_tidak_ditemukan = False
 
             # Cek terlebih dahulu apakah field NIK berisi nilai dummy '9999999999999998'
             nik_existing = baca_nilai_field_nik(d)
@@ -3993,6 +4046,16 @@ def proses_update_reject_nik():
                 ketuk("Cek NIK")
                 tunggu_loading_cek_nik(timeout=30, sleep_before=0.3)
 
+                # Pengecekan 1: Scan apakah muncul 'NIK TIDAK DITEMUKAN'
+                is_nik_not_found, msg_not_found = cek_nik_tidak_ditemukan(d)
+                if is_nik_not_found:
+                    print(f"[SCAN NIK] [SKIP] Terdeteksi pesan '{msg_not_found}'. Menyimpan status Excel 'Error Nik tidak ditemukan' & melompati IDPEL {idpel}...")
+                    simpan_status_excel(row, "Error Nik tidak ditemukan")
+                    kembali_ke_daftar_assignment()
+                    nik_tidak_ditemukan = True
+                    break
+
+                # Pengecekan 2: Scan apakah muncul 'NIK tidak valid'
                 is_nik_invalid, msg_error = cek_nik_tidak_valid(d)
                 if is_nik_invalid:
                     print(f"[SCAN NIK] [RETRY NIK] Terdeteksi '{msg_error}' (percobaan ke-{nik_attempt}/{max_nik_attempts}). Melakukan swipe ke bawah & ke atas...")
@@ -4004,6 +4067,11 @@ def proses_update_reject_nik():
                     print(f"[SCAN NIK] [SUKSES] NIK '{nik}' berhasil dicek (tidak ada pesan NIK tidak valid) pada percobaan ke-{nik_attempt}.")
                     nik_sukses = True
                     break
+
+            # Jika NIK tidak ditemukan, langsung skip IDPEL ini dan lanjut ke IDPEL berikutnya
+            if nik_tidak_ditemukan:
+                sukses_baris = True
+                break
 
             if not nik_sukses:
                 print(f"[SCAN NIK] [GAGAL] NIK '{nik}' tetap 'NIK tidak valid' setelah {max_nik_attempts}x percobaan. Menyimpan status Excel & berpindah ke baris berikutnya...")
