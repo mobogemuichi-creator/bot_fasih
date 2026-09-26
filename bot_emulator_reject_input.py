@@ -3407,7 +3407,7 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
     tunggu_loading(timeout=30)
     time.sleep(SLEEP_SHORT)
 
-    # Scan apakah muncul teks mengandung "Rincian 101a tidak sama dengan hasil Cek ID Pelanggan"
+    # Scan apakah muncul teks mengandung "Rincian 101a" atau "Rincian 101b" (tidak sama dengan hasil Cek ID Pelanggan)
     max_retry_rincian = 10
     for try_rincian in range(1, max_retry_rincian + 1):
         try:
@@ -3415,21 +3415,29 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
         except Exception:
             xml_cur = ""
 
-        ada_rincian_101a = (
-            "rincian 101a tidak sama" in xml_cur or
+        ada_rincian_101 = (
             "rincian 101a" in xml_cur or
-            check_exists(d(textContains="Rincian 101a tidak sama dengan hasil Cek ID Pelanggan")) or
+            "rincian 101b" in xml_cur or
             check_exists(d(textContains="Rincian 101a")) or
+            check_exists(d(textContains="Rincian 101b")) or
             check_exists(d(descriptionContains="Rincian 101a")) or
-            check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a')]"))
+            check_exists(d(descriptionContains="Rincian 101b")) or
+            check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101b') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101b')]"))
         )
 
-        if not ada_rincian_101a:
+        if not ada_rincian_101:
             if try_rincian > 1:
-                print(f"[BLOK I] [SUKSES] Pesan 'Rincian 101a' sudah hilang setelah {try_rincian - 1}x ketuk ulang. Melanjutkan proses...")
+                print(f"[BLOK I] [SUKSES] Pesan 'Rincian 101a / 101b' sudah hilang setelah {try_rincian - 1}x ketuk ulang. Melanjutkan proses...")
             break
 
-        print(f"[BLOK I] [WARNING] Terdeteksi pesan mengandung 'Rincian 101a tidak sama dengan hasil Cek ID Pelanggan' (pemeriksaan ke-{try_rincian}/{max_retry_rincian}). Mengetuk kembali 'Cek ID Pelanggan'...")
+        terdeteksi_list = []
+        if "rincian 101a" in xml_cur or check_exists(d(textContains="Rincian 101a")):
+            terdeteksi_list.append("Rincian 101a")
+        if "rincian 101b" in xml_cur or check_exists(d(textContains="Rincian 101b")):
+            terdeteksi_list.append("Rincian 101b")
+        nama_rincian = " & ".join(terdeteksi_list) if terdeteksi_list else "Rincian 101a/101b"
+
+        print(f"[BLOK I] [WARNING] Terdeteksi pesan mengandung '{nama_rincian} tidak sama dengan hasil Cek ID Pelanggan' (pemeriksaan ke-{try_rincian}/{max_retry_rincian}). Mengetuk kembali 'Cek ID Pelanggan'...")
 
         # Cari dan pastikan tombol 'Cek ID Pelanggan' dapat diketuk
         btn_cek_rincian = d(className="android.widget.Button", text="Cek ID Pelanggan")
