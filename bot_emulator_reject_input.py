@@ -3327,16 +3327,20 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
     Helper untuk mencari tombol 'Cek ID Pelanggan', memastikan posisi aman di layar,
     mengetuk tombol tersebut, dan menunggu loading selesai.
     """
-    print("[BLOK I] Men-scroll secara dinamis ke tombol 'Cek ID Pelanggan'...")
-    try:
-        d(scrollable=True).scroll.to(text="Cek ID Pelanggan")
-        time.sleep(0.3)
-    except Exception:
-        pass
-
     d_info = d.info
     screen_h = d_info.get("displayHeight", 960)
     screen_w = d_info.get("displayWidth", 540)
+
+    print("[BLOK I] Melakukan scroll secara statis ke tombol 'Cek ID Pelanggan' (setara 3 kali scroll dinamis mencari alamat)...")
+    for s_idx in range(1, 4):
+        try:
+            if arah_awal == "up":
+                swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.1)
+            else:
+                swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.1)
+            time.sleep(0.05)
+        except Exception:
+            pass
 
     # Pastikan tombol benar-benar terlihat di viewport yang aman (bukan di luar/terpotong navbar)
     btn_cek = None
