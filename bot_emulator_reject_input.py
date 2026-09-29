@@ -2542,7 +2542,20 @@ def ambil_data_alamat(file_output="temp_alamat.txt", idpel=""):
             print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
             tunggu_loading(timeout=30)
             time.sleep(SLEEP_SHORT)
-            print("[BLOK I] Loading selesai. Melanjutkan swipe & pengambilan data alamat...")
+
+            # Cek jika terdeteksi teks limit API check-idpln setelah ketuk Cek ID Pelanggan
+            limit_msg = "Permintaan API check-idpln sudah terlampaui (limit)."
+            try:
+                xml_after_cek = d.dump_hierarchy().lower()
+                is_cek_limit = "check-idpln sudah terlampaui" in xml_after_cek or "terlampaui (limit)" in xml_after_cek or check_exists(d(textContains=limit_msg))
+            except Exception:
+                is_cek_limit = check_exists(d(textContains=limit_msg))
+
+            if is_cek_limit:
+                print(f"[BLOK I] [LIMIT DETECTED] Terdeteksi limit API check-idpln pada swipe ke-{swipe_idx}! Beralih ke 'Cek Nomor Meter'...")
+                eksekusi_ketuk_cek_nometer(arah_awal="down")
+            else:
+                print("[BLOK I] Loading selesai. Melanjutkan swipe & pengambilan data alamat...")
 
         # Cek target alamat ditemukan
         if "103." in xml or "nama pada id pelanggan" in xml_lower or (not xml and (d(textContains="103.").exists() or d(textContains="Nama pada ID Pelanggan").exists())):
@@ -3425,6 +3438,10 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
             check_exists(d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101b') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101a') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'rincian 101b')]"))
         )
 
+        if "check-idpln sudah terlampaui" in xml_cur or "terlampaui (limit)" in xml_cur:
+            print("[BLOK I] [LIMIT DETECTED] API check-idpln limit terdeteksi saat pengecekan rincian. Menghentikan retry 'Cek ID Pelanggan'.")
+            break
+
         if not ada_rincian_101:
             if try_rincian > 1:
                 print(f"[BLOK I] [SUKSES] Pesan 'Rincian 101a / 101b' sudah hilang setelah {try_rincian - 1}x ketuk ulang. Melanjutkan proses...")
@@ -3479,6 +3496,101 @@ def eksekusi_ketuk_cek_id_pelanggan(arah_awal="down"):
         print("[BLOK I] [LOADING] Menunggu loading 'Cek ID Pelanggan' selesai...")
         tunggu_loading(timeout=30)
         time.sleep(SLEEP_SHORT)
+
+
+def eksekusi_ketuk_cek_nometer(arah_awal="down"):
+    """
+    Helper untuk mencari tombol 'Cek Nomor Meter' secara dinamis,
+    memastikan posisi aman di layar, mengetuk tombol tersebut,
+    dan menunggu loading selesai.
+    """
+    print("[BLOK I] Men-scroll secara dinamis ke tombol 'Cek Nomor Meter'...")
+    try:
+        d(scrollable=True).scroll.to(text="Cek Nomor Meter")
+        time.sleep(0.3)
+    except Exception:
+        pass
+
+    d_info = d.info
+    screen_h = d_info.get("displayHeight", 960)
+    screen_w = d_info.get("displayWidth", 540)
+
+    btn_meter = None
+    max_swipes_meter = 15
+
+    for swipe_idx in range(1, max_swipes_meter + 1):
+        btn_meter = d(text="Cek Nomor Meter")
+        if not check_exists(btn_meter):
+            btn_meter = d(textContains="Cek Nomor Meter")
+        if not check_exists(btn_meter):
+            btn_meter = d(textContains="Cek No Meter")
+        if not check_exists(btn_meter):
+            btn_meter = d(descriptionContains="Cek Nomor Meter")
+        if not check_exists(btn_meter):
+            btn_meter = d.xpath("//*[contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cek nomor meter') or contains(translate(@content-desc, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cek nomor meter') or contains(translate(@text, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cek no meter')]")
+
+        if check_exists(btn_meter):
+            b = btn_meter.info.get("bounds", {})
+            top = b.get("top", 0)
+            bottom = b.get("bottom", 0)
+            if 150 <= top and bottom <= (screen_h - 120):
+                print(f"[BLOK I] Tombol 'Cek Nomor Meter' berada di posisi aman layar (bounds: [{b.get('left')},{top}][{b.get('right')},{bottom}]).")
+                break
+            elif top > (screen_h - 120):
+                print(f"[BLOK I] Tombol 'Cek Nomor Meter' masih di bawah layar (top={top}), swipe ke bawah #{swipe_idx}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
+                time.sleep(0.2)
+            elif bottom < 150:
+                print(f"[BLOK I] Tombol 'Cek Nomor Meter' terlalu di atas (bottom={bottom}), swipe ke atas #{swipe_idx}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.15)
+                time.sleep(0.2)
+        else:
+            if arah_awal == "up":
+                print(f"[BLOK I] Tombol 'Cek Nomor Meter' belum terlihat, swipe ke atas #{swipe_idx}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.3), screen_w // 2, int(screen_h * 0.6), duration=0.15)
+            else:
+                print(f"[BLOK I] Tombol 'Cek Nomor Meter' belum terlihat, swipe ke bawah #{swipe_idx}...")
+                swipe_aman(screen_w // 2, int(screen_h * 0.7), screen_w // 2, int(screen_h * 0.4), duration=0.15)
+            time.sleep(0.2)
+
+    # Eksekusi ketuk dengan koordinat tengah (center bounds)
+    sukses_ketuk_meter = False
+    if btn_meter and check_exists(btn_meter):
+        try:
+            b = btn_meter.info.get("bounds", {})
+            cx = (b.get("left", 0) + b.get("right", 0)) // 2
+            cy = (b.get("top", 0) + b.get("bottom", 0)) // 2
+            if 0 < cx < screen_w and 0 < cy < screen_h:
+                print(f"[BLOK I] Mengetuk tombol 'Cek Nomor Meter' pada titik tengah ({cx}, {cy})...")
+                d.click(cx, cy)
+                sukses_ketuk_meter = True
+            else:
+                btn_meter.click()
+                sukses_ketuk_meter = True
+        except Exception as e:
+            print(f"[BLOK I] [WARNING] Gagal klik koordinat 'Cek Nomor Meter': {e}")
+
+    if not sukses_ketuk_meter:
+        print("[BLOK I] Mengetuk tombol 'Cek Nomor Meter' via ketuk()...")
+        ketuk("Cek Nomor Meter")
+
+    # Retry jika loading belum muncul
+    time.sleep(0.5)
+    progress_el = d(resourceId="id.go.bpsfasih:id/card_progress")
+    if not progress_el.exists():
+        progress_el = d(className="android.widget.ProgressBar")
+
+    if not progress_el.exists():
+        print("[BLOK I] [RETRY] Loading belum terdeteksi, mencoba mengetuk ulang 'Cek Nomor Meter'...")
+        if btn_meter and check_exists(btn_meter):
+            btn_meter.click()
+        else:
+            ketuk("Cek Nomor Meter")
+
+    print("[BLOK I] [LOADING] Menunggu loading 'Cek Nomor Meter' selesai...")
+    tunggu_loading(timeout=30)
+    time.sleep(SLEEP_SHORT)
+    return True
 
 
 
@@ -3764,6 +3876,24 @@ def proses_update_reject_nik():
                     eksekusi_ketuk_cek_id_pelanggan(arah_awal="up")
                 else:
                     print("[BLOK I] Tidak terdeteksi teks 'tidak sama'. Melanjutkan ke data alamat...")
+
+            # Scan sebelum ambil_data_alamat(): apakah muncul limit API check-idpln setelah loading Cek ID Pelanggan
+            limit_msg = "Permintaan API check-idpln sudah terlampaui (limit)."
+            is_limit_api_idpel = False
+            try:
+                xml_before_alamat = d.dump_hierarchy().lower()
+                if "check-idpln sudah terlampaui" in xml_before_alamat or "terlampaui (limit)" in xml_before_alamat:
+                    is_limit_api_idpel = True
+                elif check_exists(d(textContains=limit_msg)) or check_exists(d(textContains="terlampaui (limit)")):
+                    is_limit_api_idpel = True
+            except Exception:
+                is_limit_api_idpel = check_exists(d(textContains=limit_msg))
+
+            if is_limit_api_idpel:
+                print(f"[BLOK I] [LIMIT DETECTED] Muncul teks '{limit_msg}' sebelum ambil data alamat!")
+                print("[BLOK I] Men-scroll dinamis mencari & mengetuk tombol 'Cek Nomor Meter'...")
+                eksekusi_ketuk_cek_nometer(arah_awal="down")
+
             alamat_dict = ambil_data_alamat(file_output="temp_alamat.txt", idpel=idpel)
             time.sleep(SLEEP_SHORT)
 
